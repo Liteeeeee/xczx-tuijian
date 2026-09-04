@@ -1,0 +1,20 @@
+{
+  "name": "仙草甄选AI推荐",
+  "appid": "__UNI__XCZX_TUIJIAN",
+  "description": "仙草甄选 AI 营养推荐 H5 / 小程序项目",
+  "versionName": "0.1.0",
+  "versionCode": "100",
+  "transformPx": false,
+  "h5": {
+    "title": "仙草甄选 AI 推荐",
+    "router": {
+      "mode": "hash"
+    }
+  },
+  "mp-weixin": {
+    "appid": "",
+    "setting": {
+      "urlCheck": false
+    }
+  }
+}

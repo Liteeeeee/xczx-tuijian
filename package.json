@@ -1,0 +1,24 @@
+{
+  "name": "xczx-tuijian",
+  "version": "0.1.0",
+  "private": true,
+  "description": "仙草甄选 AI 推荐项目，首期 H5，后续支持微信小程序",
+  "scripts": {
+    "dev:h5": "uni -p h5",
+    "build:h5": "uni build -p h5",
+    "dev:mp-weixin": "uni -p mp-weixin",
+    "build:mp-weixin": "uni build -p mp-weixin"
+  },
+  "dependencies": {
+    "@dcloudio/uni-app": "3.0.0-alpha-5020520260829001",
+    "@dcloudio/uni-h5": "3.0.0-alpha-5020520260829001",
+    "pinia": "^2.1.7",
+    "vue": "^3.5.42"
+  },
+  "devDependencies": {
+    "@dcloudio/types": "3.4.31",
+    "@dcloudio/vite-plugin-uni": "3.0.0-alpha-5020520260829001",
+    "sass": "^1.103.1",
+    "vite": "5.2.8"
+  }
+}

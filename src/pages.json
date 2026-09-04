@@ -1,0 +1,84 @@
+{
+  "pages": [
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationBarTitleText": "首页"
+      }
+    },
+    {
+      "path": "pages/recommend/question",
+      "style": {
+        "navigationBarTitleText": "智能推荐"
+      }
+    },
+    {
+      "path": "pages/recommend/result",
+      "style": {
+        "navigationBarTitleText": "推荐结果"
+      }
+    },
+    {
+      "path": "pages/combo/index",
+      "style": {
+        "navigationBarTitleText": "营养组合"
+      }
+    },
+    {
+      "path": "pages/user/index",
+      "style": {
+        "navigationBarTitleText": "我的"
+      }
+    },
+    {
+      "path": "pages/user/profile",
+      "style": {
+        "navigationBarTitleText": "个人资料"
+      }
+    },
+    {
+      "path": "pages/user/about",
+      "style": {
+        "navigationBarTitleText": "关于我们"
+      }
+    },
+    {
+      "path": "pages/user/agreement",
+      "style": {
+        "navigationBarTitleText": "服务协议"
+      }
+    },
+    {
+      "path": "pages/user/login",
+      "style": {
+        "navigationBarTitleText": "手机号码登录"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "仙草甄选 AI 推荐",
+    "navigationBarBackgroundColor": "#F5F7FB",
+    "backgroundColor": "#F5F7FB"
+  },
+  "tabBar": {
+    "color": "#94a3b8",
+    "selectedColor": "#28c4b8",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页"
+      },
+      {
+        "pagePath": "pages/combo/index",
+        "text": "营养组合"
+      },
+      {
+        "pagePath": "pages/user/index",
+        "text": "我的"
+      }
+    ]
+  }
+}
