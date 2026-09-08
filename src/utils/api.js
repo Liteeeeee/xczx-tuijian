@@ -39,3 +39,68 @@ export function getComboList(params) {
     data: params,
   });
 }
+
+// ========== C 端 AI 对话 ==========
+
+// 默认 AI 问题（data 为字符串数组）
+export function getAiQuestions() {
+  return request({
+    url: '/app/ai/questions',
+    method: 'GET',
+  });
+}
+
+// 默认问答模板（含题目 items：itemId/question/questionType/requiredFlag/options/sortOrder）
+export function getAiQaTemplateDefault() {
+  return request({
+    url: '/app/ai/qaTemplates/default',
+    method: 'GET',
+  });
+}
+
+// 问答模板分页
+// params: { pageNum, pageSize, templateName?, templateCode?, isDefault?, keyword? }
+export function getAiQaTemplates(params) {
+  return request({
+    url: '/app/ai/qaTemplates',
+    method: 'GET',
+    data: params,
+  });
+}
+
+// 默认欢迎语
+export function getAiWelcome() {
+  return request({
+    url: '/app/ai/welcome',
+    method: 'GET',
+  });
+}
+
+// AI 同步对话
+// data: { prompt(必填), sessionId?(可选) }，返回 body.data = { text, sessionId, requestId, finishReason }
+export function aiChat(data) {
+  return request({
+    url: '/app/ai/chat',
+    method: 'POST',
+    data,
+  });
+}
+
+// AI 异步对话提交
+// data: { taskId(必填,前端唯一), prompt(必填), sessionId?(可选) }
+export function aiChatAsync(data) {
+  return request({
+    url: '/app/ai/chat/async',
+    method: 'POST',
+    data,
+  });
+}
+
+// AI 异步对话查询
+// 返回 body.data = { taskId, status(2进行中/0成功/1失败), result:{text,sessionId,...}, errorMsg }
+export function aiChatAsyncResult(taskId) {
+  return request({
+    url: `/app/ai/chat/async/${taskId}`,
+    method: 'GET',
+  });
+}
