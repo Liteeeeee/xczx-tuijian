@@ -1,5 +1,7 @@
 import { defineStore } from 'pinia';
 import { buildRecommendation } from '@/utils/mock';
+import { smsLogin, getUserInfo } from '@/utils/api';
+import { setToken, clearToken } from '@/utils/request';
 
 const STORAGE_KEY = 'xczx-tuijian-app-state';
 
@@ -8,6 +10,7 @@ const defaultUser = {
   nickname: '营养推荐官用户',
   birthday: '',
   gender: '',
+  avatar: '',
 };
 
 function loadState() {
@@ -56,15 +59,31 @@ export const useAppStore = defineStore('app', {
         lastAnswers: this.lastAnswers,
       });
     },
-    login(phone) {
+    async login(phone, code) {
+      const loginData = await smsLogin(phone, code);
+      setToken(loginData.token);
+
+      // 登录成功后拉取用户信息（失败不阻断登录）
+      let userInfo = null;
+      try {
+        userInfo = await getUserInfo();
+      } catch (error) {
+        // ignore
+      }
+
       this.loggedIn = true;
       this.user.phone = phone;
-      if (!this.user.nickname || this.user.nickname === defaultUser.nickname) {
-        this.user.nickname = `Windir${phone}`;
+      if (userInfo && userInfo.user) {
+        const user = userInfo.user;
+        this.user.phone = user.phonenumber || phone;
+        this.user.nickname = user.nickName || phone;
+        this.user.avatar = user.avatar || '';
       }
       this.persist();
+      return loginData;
     },
     logout() {
+      clearToken();
       this.loggedIn = false;
       this.user = { ...defaultUser };
       this.persist();

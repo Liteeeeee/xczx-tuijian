@@ -1,6 +1,7 @@
 <script setup>
-import { reactive } from 'vue';
+import { reactive, ref, onUnmounted } from 'vue';
 import { useAppStore } from '@/store/app';
+import { sendSmsCode } from '@/utils/api';
 
 const store = useAppStore();
 
@@ -9,14 +10,53 @@ const form = reactive({
   code: '',
 });
 
-function login() {
+const sending = ref(false);
+const countdown = ref(0);
+let timer = null;
+
+function validatePhone() {
   if (!/^1\d{10}$/.test(form.phone)) {
     uni.showToast({
       title: '请输入正确手机号',
       icon: 'none',
     });
-    return;
+    return false;
   }
+  return true;
+}
+
+async function getCode() {
+  if (!validatePhone()) return;
+  if (countdown.value > 0) return;
+
+  sending.value = true;
+  try {
+    await sendSmsCode(form.phone);
+    uni.showToast({
+      title: '验证码已发送',
+      icon: 'none',
+    });
+    startCountdown();
+  } catch (error) {
+    // 错误已在 request 层统一提示
+  } finally {
+    sending.value = false;
+  }
+}
+
+function startCountdown() {
+  countdown.value = 60;
+  timer = setInterval(() => {
+    countdown.value -= 1;
+    if (countdown.value <= 0) {
+      clearInterval(timer);
+      timer = null;
+    }
+  }, 1000);
+}
+
+async function login() {
+  if (!validatePhone()) return;
 
   if (!form.code || form.code.length < 4) {
     uni.showToast({
@@ -26,24 +66,28 @@ function login() {
     return;
   }
 
-  store.login(form.phone);
-  uni.showToast({
-    title: '登录成功',
-    icon: 'success',
-  });
-
-  setTimeout(() => {
-    uni.navigateBack();
-  }, 500);
+  try {
+    await store.login(form.phone, form.code);
+    uni.showToast({
+      title: '登录成功',
+      icon: 'success',
+    });
+    setTimeout(() => {
+      uni.switchTab({
+        url: '/pages/index/index',
+      });
+    }, 500);
+  } catch (error) {
+    // 错误已在 request 层统一提示
+  }
 }
 
-function mockCode() {
-  form.code = '1234';
-  uni.showToast({
-    title: '验证码已发送',
-    icon: 'none',
-  });
-}
+onUnmounted(() => {
+  if (timer) {
+    clearInterval(timer);
+    timer = null;
+  }
+});
 </script>
 
 <template>
@@ -58,7 +102,9 @@ function mockCode() {
       <view class="field-label">验证码</view>
       <view class="code-row">
         <input v-model="form.code" class="field-input code-input" maxlength="6" placeholder="请输入验证码" />
-        <view class="code-btn" @tap="mockCode">获取验证码</view>
+        <view class="code-btn" :class="{ disabled: countdown > 0 }" @tap="getCode">
+          {{ countdown > 0 ? `${countdown}s后重发` : (sending ? '发送中…' : '获取验证码') }}
+        </view>
       </view>
 
       <view class="agreement-hint">点击注册或登录即表示您同意《用户服务协议》</view>
@@ -130,6 +176,11 @@ function mockCode() {
   font-size: 26rpx;
   font-weight: 600;
   margin-top: 14rpx;
+}
+
+.code-btn.disabled {
+  color: #94a3b8;
+  background: #f1f5f9;
 }
 
 .agreement-hint {
