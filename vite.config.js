@@ -15,6 +15,14 @@ export default defineConfig({
         target: 'http://192.168.110.11:18081',
         changeOrigin: true,
       },
+      '/ai': {
+        target: 'http://192.168.110.11:18081',
+        changeOrigin: true,
+      },
+      '/captchaImage': {
+        target: 'http://192.168.110.11:18081',
+        changeOrigin: true,
+      },
     },
   },
 });

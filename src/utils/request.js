@@ -9,6 +9,7 @@
 const BASE_URL = '';
 
 const TOKEN_KEY = 'xczx-tuijian-access-token';
+const STATE_KEY = 'xczx-tuijian-app-state';
 
 export function getToken() {
   try {
@@ -32,6 +33,40 @@ export function clearToken() {
   } catch (error) {
     // ignore
   }
+  try {
+    const raw = uni.getStorageSync(STATE_KEY);
+    let cached = raw;
+    if (typeof raw === 'string' && raw) {
+      try {
+        cached = JSON.parse(raw);
+      } catch (ignore) {
+        cached = null;
+      }
+    }
+    const user = cached && cached.user && typeof cached.user === 'object' ? cached.user : {};
+    const next = {
+      loggedIn: false,
+      user: {
+        phone: user.phone || '',
+        nickname: user.nickname || '营养推荐官用户',
+        birthday: user.birthday || '',
+        gender: user.gender || '',
+        avatar: user.avatar || '',
+      },
+      lastAnswers: cached && typeof cached.lastAnswers === 'object' && !Array.isArray(cached.lastAnswers) ? cached.lastAnswers : {},
+      recommendation: cached && cached.recommendation ? cached.recommendation : null,
+      history: cached && Array.isArray(cached.history) ? cached.history : [],
+    };
+    uni.setStorageSync(STATE_KEY, JSON.stringify(next));
+  } catch (ignore) {
+    // ignore
+  }
+}
+
+function maskToken(token) {
+  if (!token || typeof token !== 'string') return '(no token)';
+  if (token.length <= 8) return token.slice(0, 2) + '***' + token.slice(-2);
+  return `${token.slice(0, 4)}****${token.slice(-4)}(len=${token.length})`;
 }
 
 export default function request(options = {}) {
@@ -46,24 +81,61 @@ export default function request(options = {}) {
   return new Promise((resolve, reject) => {
     const token = getToken();
 
+    const finalHeader = {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...header,
+    };
+
+    try {
+      if (typeof window !== 'undefined') {
+        // eslint-disable-next-line no-console
+        console.log('[request]', method, url, 'Authorization=', maskToken(token));
+      }
+    } catch (ignore) {
+      // ignore
+    }
+
     uni.request({
       url: `${BASE_URL}${url}`,
       method,
       data,
-      header: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...header,
-      },
+      header: finalHeader,
       success(res) {
         const body = res.data || {};
+        const code = body.code;
 
-        // 登录态失效：清除本地 token
-        if (body.code === 401) {
+        // 登录态失效：清除本地 token + 重置登录态 + 跳登录页
+        if (code === 401) {
           clearToken();
+          try {
+            uni.showToast({
+              title: '登录态已失效，请重新登录',
+              icon: 'none',
+              duration: 1800,
+            });
+          } catch (ignore) {
+            // ignore
+          }
+          setTimeout(() => {
+            const pages = typeof getCurrentPages === 'function' ? getCurrentPages() : [];
+            const cur = pages && pages.length ? pages[pages.length - 1] : null;
+            const curRoute = cur && (cur.route || cur.$page && cur.$page.fullPath && cur.$page.fullPath.path);
+            const isLoginPage = curRoute === 'pages/user/login';
+            if (!isLoginPage) {
+              uni.navigateTo({
+                url: '/pages/user/login',
+                fail() {
+                  try { uni.reLaunch({ url: '/pages/user/login' }); } catch (ignore) { /* ignore */ }
+                },
+              });
+            }
+          }, 600);
+          reject(new Error(body.msg || '登录态已失效'));
+          return;
         }
 
-        if (body.code === 200) {
+        if (code === 200) {
           resolve(body);
           return;
         }

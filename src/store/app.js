@@ -123,6 +123,7 @@ function loadState() {
         user: { ...defaultUser },
         lastAnswers: {},
         recommendation: null,
+        history: [],
       };
     }
     const user = cached.user && typeof cached.user === 'object' ? cached.user : {};
@@ -132,11 +133,14 @@ function loadState() {
 
     let recommendation = extractRecommendationFromObject(cached);
 
+    let history = Array.isArray(cached.history) ? cached.history.filter((h) => h && typeof h === 'object') : [];
+
     return {
       loggedIn: Boolean(cached.loggedIn),
       user: { ...defaultUser, ...user },
       lastAnswers,
       recommendation,
+      history,
     };
   } catch (error) {
     return {
@@ -144,6 +148,7 @@ function loadState() {
       user: { ...defaultUser },
       lastAnswers: {},
       recommendation: null,
+      history: [],
     };
   }
 }
@@ -166,6 +171,7 @@ export const useAppStore = defineStore('app', {
         user: toPlain(this.user),
         lastAnswers: toPlain(this.lastAnswers),
         recommendation: toPlain(this.recommendation),
+        history: Array.isArray(this.history) ? this.history.map((h) => toPlain(h)).filter(Boolean) : [],
       };
       try {
         uni.setStorageSync(STORAGE_KEY, JSON.stringify(payload));
@@ -176,6 +182,54 @@ export const useAppStore = defineStore('app', {
           // ignore
         }
       }
+    },
+    addHistory(recommendation) {
+      try {
+        const obj = toPlain(recommendation);
+        if (!obj || typeof obj !== 'object') return null;
+        if (!Array.isArray(obj.products) || obj.products.length === 0) return null;
+        const now = Date.now();
+        const id = 'rec_' + now.toString(36) + Math.random().toString(36).slice(2, 8);
+        const entry = {
+          id,
+          createTime: now,
+          recommendMode: typeof obj.recommendMode === 'string' ? obj.recommendMode : '',
+          reply: typeof obj.reply === 'string' ? obj.reply : '',
+          products: Array.isArray(obj.products) ? obj.products.slice() : [],
+          success: obj.success,
+          limit: obj.limit,
+          raw: obj,
+        };
+        const next = [entry].concat(Array.isArray(this.history) ? this.history : []).slice(0, 50);
+        this.history = next;
+        this.persist();
+        return entry;
+      } catch (error) {
+        return null;
+      }
+    },
+    removeHistory(id) {
+      if (!id) return;
+      this.history = (Array.isArray(this.history) ? this.history : []).filter((h) => h.id !== id);
+      this.persist();
+    },
+    clearHistory() {
+      this.history = [];
+      this.persist();
+    },
+    getHistoryById(id) {
+      if (!id) return null;
+      const list = Array.isArray(this.history) ? this.history : [];
+      const found = list.find((h) => h.id === id);
+      if (!found) return null;
+      if (found && found.raw && typeof found.raw === 'object') return toPlain(found.raw);
+      return toPlain({
+        success: found.success,
+        recommendMode: found.recommendMode,
+        reply: found.reply,
+        limit: found.limit,
+        products: found.products,
+      });
     },
     migrateIfNeeded() {
       const raw = uni.getStorageSync(STORAGE_KEY);
@@ -291,6 +345,7 @@ export const useAppStore = defineStore('app', {
             plain.products = list;
           }
           this.recommendation = plain;
+          this.addHistory(plain);
         } else {
           this.recommendation = null;
         }

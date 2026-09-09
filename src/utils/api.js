@@ -104,3 +104,22 @@ export function aiChatAsyncResult(taskId) {
     method: 'GET',
   });
 }
+
+// C端用户AI会话列表（历史记录）
+// 返回 body.data = AiChatSession[]，AiChatSession：{id,sessionId,appId,appName,firstPrompt,title,messageCount,createTime,lastTime,...}
+export function getAiSessions() {
+  return request({
+    url: '/app/ai/sessions',
+    method: 'GET',
+  });
+}
+
+// 会话详情（含对话明细）
+// 路径 /ai/chat/log/{sessionId}（非 C 端 app 前缀版本，若依通用 AI 对话记录接口）
+// 返回 body.data = 会话消息日志 { messages, session, ... }
+export function getAiChatLog(sessionId) {
+  return request({
+    url: `/ai/chat/log/${encodeURIComponent(sessionId)}`,
+    method: 'GET',
+  });
+}

@@ -4,6 +4,7 @@ import { useAppStore } from '@/store/app';
 const store = useAppStore();
 
 const menus = [
+  { title: '历史记录', url: '/pages/recommend/history' },
   { title: '个人资料', url: '/pages/user/profile' },
   { title: '关于我们', url: '/pages/user/about' },
   { title: '服务协议', url: '/pages/user/agreement' },
@@ -31,7 +32,7 @@ function logout() {
 <template>
   <view class="page-shell user-page">
     <view class="profile-card">
-      <view class="avatar">{{ store.displayName.slice(0, 1) }}</view>
+      <image class="avatar" src="/static/images/推荐 demo 首页切图/图标1@2x.png" mode="aspectFit" />
       <view class="profile-info">
         <view class="profile-name">{{ store.displayName }}</view>
         <view class="profile-phone">{{ store.maskedPhone }}</view>

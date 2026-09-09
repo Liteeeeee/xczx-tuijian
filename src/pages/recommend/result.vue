@@ -2,11 +2,13 @@
 import { computed, ref, onMounted } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import { useAppStore } from "@/store/app";
+import { getAiChatLog } from "@/utils/api";
 
 const store = useAppStore();
 
 const override = ref(null);
 const trace = ref([]);
+const loadingSession = ref(false);
 
 function pushTrace(tag, payload) {
   try {
@@ -149,7 +151,208 @@ function pickBestRecommendation(queryData) {
   );
 }
 
-onLoad((options) => {
+function isAssistantMsg(m) {
+  if (!m || typeof m !== "object") return false;
+  const raw =
+    (typeof m.role === "string" ? m.role : "") +
+    "|" +
+    (typeof m.messageType === "string" ? m.messageType : "") +
+    "|" +
+    (typeof m.sender === "string" ? m.sender : "") +
+    "|" +
+    (typeof m.senderRole === "string" ? m.senderRole : "") +
+    "|" +
+    (typeof m.type === "string" ? m.type : "");
+  return /assistant|ai|bot|robot|模型|回复|回答|智能体/i.test(raw);
+}
+
+function pickStringField(m, candidates) {
+  for (const k of candidates) {
+    const v = m[k];
+    if (typeof v === "string" && v) return v;
+  }
+  return "";
+}
+
+function extractLastAiReplyText(data) {
+  if (!data || typeof data !== "object") return "";
+  const candidates = [];
+  const keysToScan = [
+    "messages",
+    "messageList",
+    "chatMessages",
+    "logs",
+    "logList",
+    "records",
+    "chatRecords",
+    "list",
+    "items",
+    "conversation",
+    "dialogs",
+    "history",
+    "rows",
+    "data",
+  ];
+  function walk(node) {
+    if (!node || typeof node !== "object") return;
+    if (Array.isArray(node)) {
+      if (
+        node.some(
+          (n) =>
+            n &&
+            typeof n === "object" &&
+            (n.role || n.sender || n.messageType || isAssistantMsg(n)),
+        )
+      ) {
+        candidates.push(...node.filter((n) => n && typeof n === "object"));
+      }
+      node.forEach(walk);
+      return;
+    }
+    for (const k of keysToScan) {
+      if (Array.isArray(node[k])) {
+        node[k].forEach(walk);
+      }
+    }
+    for (const k of Object.keys(node)) {
+      const v = node[k];
+      if (!v) continue;
+      if (typeof v === "object") walk(v);
+    }
+  }
+  walk(data);
+  const assistants = candidates.filter((m) => isAssistantMsg(m));
+  if (!assistants.length) {
+    const arr = Object.values(data).find((v) => Array.isArray(v));
+    if (Array.isArray(arr)) {
+      for (let i = arr.length - 1; i >= 0; i -= 1) {
+        const e = arr[i];
+        if (e && typeof e === "object") {
+          const txt = pickStringField(e, [
+            "text",
+            "content",
+            "reply",
+            "message",
+            "answer",
+            "result",
+            "response",
+          ]);
+          if (txt) return txt;
+        }
+      }
+    }
+    return "";
+  }
+  const last = assistants[assistants.length - 1];
+  const text = pickStringField(last, [
+    "text",
+    "content",
+    "reply",
+    "message",
+    "answer",
+    "result",
+    "response",
+    "output",
+  ]);
+  if (text) return text;
+  if (last.result && typeof last.result === "string") return last.result;
+  if (last.result && typeof last.result === "object") {
+    const inner = pickStringField(last.result, [
+      "text",
+      "content",
+      "reply",
+      "message",
+      "answer",
+      "result",
+      "response",
+    ]);
+    if (inner) return inner;
+  }
+  return "";
+}
+
+async function loadFromSessionId(sessionId) {
+  if (!sessionId) return null;
+  loadingSession.value = true;
+  try {
+    const res = await getAiChatLog(sessionId);
+    const payload =
+      (res && (res.data || res.rows || res.result || res)) || null;
+    const text = extractLastAiReplyText(payload);
+    pushTrace("6_sessionLog", text || null);
+    if (!text) return null;
+    let obj = parseMaybeString(text);
+    if (!obj) {
+      obj = { reply: text, products: [] };
+    }
+    if (
+      obj &&
+      typeof obj.text === "string" &&
+      (!Array.isArray(obj.products) || obj.products.length === 0)
+    ) {
+      const inner = parseMaybeString(obj.text);
+      if (inner) obj = inner;
+    }
+    if (
+      typeof obj.reply !== "string" &&
+      typeof text === "string" &&
+      !Array.isArray(obj.products)
+    ) {
+      obj.reply = text;
+    }
+    pushTrace("7_sessionParsed", obj);
+    return obj;
+  } catch (error) {
+    pushTrace("6_sessionErr", {
+      reply: String((error && (error.msg || error.message)) || error),
+    });
+    return null;
+  } finally {
+    loadingSession.value = false;
+  }
+}
+
+onLoad(async (options) => {
+  const historyId =
+    options && options.historyId ? decodeURIComponent(options.historyId) : "";
+  if (historyId && typeof store.getHistoryById === "function") {
+    const historyItem = store.getHistoryById(historyId);
+    if (
+      historyItem &&
+      (Array.isArray(historyItem.products) ||
+        typeof historyItem.reply === "string")
+    ) {
+      override.value = historyItem;
+      if (historyId) {
+        try {
+          uni.setNavigationBarTitle({ title: "历史推荐详情" });
+        } catch (ignore) {
+          // ignore
+        }
+      }
+      return;
+    }
+  }
+
+  const sessionId =
+    options && options.sessionId ? decodeURIComponent(options.sessionId) : "";
+  if (sessionId) {
+    try {
+      uni.setNavigationBarTitle({ title: "历史推荐详情" });
+    } catch (ignore) {
+      // ignore
+    }
+    const sessionObj = await loadFromSessionId(sessionId);
+    if (
+      sessionObj &&
+      (Array.isArray(sessionObj.products) ||
+        typeof sessionObj.reply === "string")
+    ) {
+      override.value = sessionObj;
+      return;
+    }
+  }
+
   let queryData = null;
   if (options && options.data) {
     try {
