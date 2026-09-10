@@ -114,12 +114,13 @@ export function getAiSessions() {
   });
 }
 
-// 会话详情（含对话明细）
-// 路径 /ai/chat/log/{sessionId}（非 C 端 app 前缀版本，若依通用 AI 对话记录接口）
-// 返回 body.data = 会话消息日志 { messages, session, ... }
+// C端用户 AI 会话对话详情（历史记录条目「详情」接口）
+// GET /app/ai/sessionMessages，入参 sessionId（query）
+// 返回 body.data = 会话消息日志（含 user / assistant 多条消息，字段不固定时 extractLastAiReplyText 通用解析兜底）
 export function getAiChatLog(sessionId) {
   return request({
-    url: `/ai/chat/log/${encodeURIComponent(sessionId)}`,
+    url: '/app/ai/sessionMessages',
     method: 'GET',
+    data: { sessionId },
   });
 }
