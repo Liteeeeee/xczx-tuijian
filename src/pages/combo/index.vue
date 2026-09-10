@@ -1,22 +1,49 @@
 <script setup>
-import { ref, onMounted } from 'vue';
-import { onReachBottom } from '@dcloudio/uni-app';
-import { getComboList } from '@/utils/api';
-import { useAppStore } from '@/store/app';
+import { ref, computed, onMounted } from "vue";
+import { onReachBottom } from "@dcloudio/uni-app";
+import { getComboList } from "@/utils/api";
+import { useAppStore } from "@/store/app";
 
 const store = useAppStore();
 
 const loading = ref(true);
 const loadingMore = ref(false);
-const errorMsg = ref('');
+const errorMsg = ref("");
 const pageNum = ref(1);
-const pageSize = 10;
+const pageSize = 12;
 const total = ref(0);
 const rows = ref([]);
 
+const themeMeta = [
+  {
+    badgeClass: "theme-badge--orange",
+    cardClass: "theme-card--orange",
+    icon: "/static/images/营养推荐/默认推荐分类icon1.png",
+    title: "明目亮睛推荐",
+    tag: "明亮双眸 · 看见美好",
+    tagEmoji: "🌅",
+  },
+  {
+    badgeClass: "theme-badge--purple",
+    cardClass: "theme-card--purple",
+    icon: "/static/images/营养推荐/默认推荐分类icon2.png",
+    title: "熬夜加班推荐",
+    tag: "深夜有能量 · 明天更出色",
+    tagEmoji: "🌙",
+  },
+  {
+    badgeClass: "theme-badge--rose",
+    cardClass: "theme-card--rose",
+    icon: "/static/images/营养推荐/默认推荐分类icon3.png",
+    title: "身高助长推荐",
+    tag: "助力成长 · 看见更高",
+    tagEmoji: "🌱",
+  },
+];
+
 async function loadFirst() {
   loading.value = true;
-  errorMsg.value = '';
+  errorMsg.value = "";
   pageNum.value = 1;
   try {
     const res = await getComboList({ pageNum: 1, pageSize });
@@ -24,7 +51,10 @@ async function loadFirst() {
     rows.value = list;
     total.value = Number(res && res.total) || 0;
   } catch (error) {
-    errorMsg.value = (error && (error.msg || error.message)) ? (error.msg || error.message) : '加载失败，请稍后重试';
+    errorMsg.value =
+      error && (error.msg || error.message)
+        ? error.msg || error.message
+        : "加载失败，请稍后重试";
     rows.value = [];
     total.value = 0;
   } finally {
@@ -56,76 +86,171 @@ onMounted(loadFirst);
 onReachBottom(loadMore);
 
 function goRecommend() {
-  uni.navigateTo({
-    url: '/pages/recommend/question',
-  });
+  uni.navigateTo({ url: "/pages/recommend/question" });
 }
 
 function splitKeywords(s) {
   if (!s) return [];
-  if (Array.isArray(s)) return s.slice(0, 5);
+  if (Array.isArray(s)) return s.slice(0, 4);
   const str = String(s);
   const parts = str.split(/[,，、;；|\s]+/g).filter(Boolean);
-  return parts.slice(0, 5);
+  return parts.slice(0, 4);
 }
 
-function comboProductChips(combo) {
-  const items = combo && Array.isArray(combo.items) ? combo.items : [];
-  if (items.length) return items.map(i => i.productName).filter(Boolean);
-  return splitKeywords(combo.productNames);
+function getThemeMeta(i) {
+  return themeMeta[i % themeMeta.length];
+}
+
+function comboTitle(combo, fallback) {
+  return (combo && (combo.comboName || combo.title || combo.name)) || fallback;
+}
+
+function comboSubtitle(combo, fallback) {
+  return (
+    (combo &&
+      (combo.features ||
+        combo.sellingPoints ||
+        combo.hotTopics ||
+        combo.subtitle)) ||
+    fallback
+  );
+}
+
+function comboProducts(combo) {
+  if (!combo) return [];
+  const items = Array.isArray(combo.items) ? combo.items : [];
+  if (items.length) {
+    return items.slice(0, 4).map((it) => ({
+      name: it.productName || it.name || it.title || "商品",
+      image: it.cover || it.image || it.pic || it.productImage || "",
+    }));
+  }
+  const names = splitKeywords(combo.productNames);
+  if (names.length) {
+    return names.map((n) => ({ name: n, image: "" }));
+  }
+  if (Number(combo.productCount) > 0) {
+    return Array.from(
+      { length: Math.min(4, Number(combo.productCount)) },
+      (_, i) => ({
+        name: `商品${i + 1}`,
+        image: "",
+      }),
+    );
+  }
+  return [];
+}
+
+function paddedProducts(combo) {
+  const list = comboProducts(combo);
+  while (list.length < 4)
+    list.push({ name: "敬请期待", image: "", placeholder: true });
+  return list.slice(0, 4);
 }
 </script>
 
 <template>
   <view class="page-shell combo-page">
-    <view class="section-card intro-card">
-      <view class="tag">营养组合</view>
-      <view class="section-title">精选组合专区</view>
-      <view class="section-subtitle">
-        结合当前精选商品池（共 {{ total }} 组），以{{ store.loggedIn ? '已登录' : '游客' }}身份浏览组合内容。
+    <view class="hero-wrap">
+      <view class="banner-card">
+        <view class="custom-nav">
+          <view class="avatar-block">
+            <image
+              class="avatar"
+              src="/static/images/营养推荐/顶部icon.png"
+              mode="aspectFit"
+            />
+            <view class="avatar-meta">
+              <view class="avatar-title">AI面包推荐官</view>
+              <view class="avatar-sub">用AI发现更适合你的美味生活</view>
+            </view>
+          </view>
+        </view>
+
+        <image
+          class="banner-img"
+          src="/static/images/营养推荐/banner@3x.png"
+          mode="widthFix"
+        />
       </view>
     </view>
 
-    <view v-if="loading" class="section-card loading-card">
-      <view class="loading-text">加载中...</view>
+    <view v-if="loading" class="theme-card loading-card">
+      <view class="loading-text">正在加载营养推荐方案...</view>
     </view>
 
-    <view v-else-if="errorMsg" class="section-card empty-card">
-      <view class="section-title">加载失败</view>
-      <view class="section-subtitle">{{ errorMsg }}</view>
+    <view v-else-if="errorMsg" class="theme-card empty-card">
+      <view class="empty-title">加载失败</view>
+      <view class="empty-sub">{{ errorMsg }}</view>
       <view class="primary-btn" @tap="loadFirst">重新加载</view>
     </view>
 
-    <view v-else-if="!rows.length" class="section-card empty-card">
-      <view class="section-title">暂无组合</view>
-      <view class="section-subtitle">当前还没有可浏览的营养组合，稍后再来看看～</view>
-      <view class="primary-btn" @tap="goRecommend">去做智能推荐</view>
-    </view>
-
-    <view v-else>
-      <view v-for="combo in rows" :key="combo.comboId" class="section-card combo-card">
-        <view class="combo-cover">
-          <view v-if="splitKeywords(combo.keywords).length" class="cover-tag">{{ splitKeywords(combo.keywords).join(' · ') }}</view>
-          <view v-else class="cover-tag">{{ combo.sellingPoints || combo.features || '精选营养组合' }}</view>
-        </view>
-        <view class="combo-title">{{ combo.comboName }}</view>
-        <view class="combo-subtitle">
-          {{ combo.features || combo.sellingPoints || combo.hotTopics || '精心搭配的营养方案' }}
-        </view>
-        <view class="combo-products">
-          <view v-for="(name, idx) in comboProductChips(combo)" :key="idx" class="product-chip">{{ name }}</view>
-          <view v-if="!comboProductChips(combo).length && combo.productCount" class="product-chip">
-            {{ combo.productCount }} 款商品
+    <view v-else class="theme-list">
+      <view
+        v-for="(combo, idx) in rows"
+        :key="combo.comboId || `combo-${idx}`"
+        class="theme-card"
+        :class="getThemeMeta(idx).cardClass"
+      >
+        <view class="theme-head">
+          <view class="theme-head-left">
+            <image
+              class="theme-icon"
+              :src="getThemeMeta(idx).icon"
+              mode="aspectFit"
+            />
+            <view class="theme-title-text">
+              <view class="theme-title">
+                {{ comboTitle(combo, getThemeMeta(idx).title) }}
+              </view>
+            </view>
+          </view>
+          <view class="theme-tag" :class="getThemeMeta(idx).badgeClass">
+            <text class="theme-tag-emoji">{{
+              getThemeMeta(idx).tagEmoji
+            }}</text>
+            <text class="theme-tag-text">
+              {{ comboSubtitle(combo, getThemeMeta(idx).tag) }}
+            </text>
           </view>
         </view>
-        <view v-if="combo.description" class="combo-reason">{{ combo.description }}</view>
+
+        <view class="theme-products">
+          <view
+            v-for="(p, pidx) in paddedProducts(combo)"
+            :key="pidx"
+            class="theme-product"
+          >
+            <view class="product-img-wrap">
+              <image
+                v-if="p.image"
+                class="product-img"
+                :src="p.image"
+                mode="aspectFill"
+              />
+              <view v-else class="product-img product-img--placeholder"></view>
+            </view>
+            <view class="product-name">{{ p.name }}</view>
+          </view>
+        </view>
+      </view>
+
+      <view v-if="!rows.length" class="theme-card empty-card">
+        <view class="empty-title">暂无推荐</view>
+        <view class="empty-sub">营养师正在准备今日推荐，稍后再来看看～</view>
+        <view class="primary-btn" @tap="goRecommend">去做智能推荐</view>
       </view>
 
       <view v-if="loadingMore" class="load-more">加载中...</view>
-      <view v-else-if="rows.length >= total && total > 0" class="load-more load-more--done">已加载全部 {{ total }} 组</view>
+      <view
+        v-else-if="rows.length >= total && total > 0"
+        class="load-more load-more--done"
+      >
+        已加载全部 {{ total }} 组
+      </view>
     </view>
 
-    <view class="primary-btn" @tap="goRecommend">去做智能推荐</view>
+    <view class="footer-copy">仙草甄选（北京）科技有限公司技术支持</view>
   </view>
 </template>
 
@@ -133,99 +258,270 @@ function comboProductChips(combo) {
 .combo-page {
   display: flex;
   flex-direction: column;
-  gap: 24rpx;
   padding-bottom: 48rpx;
+  background: #fdfbf9;
+  min-height: 100vh;
 }
 
-.intro-card {
-  background: linear-gradient(180deg, #ffffff 0%, #ecfeff 100%);
+.hero-wrap {
+  position: relative;
+  background: linear-gradient(180deg, #fff6ee 0%, #fffdf8 62%, #fdfbf9 100%);
+  padding-bottom: 12rpx;
 }
 
-.combo-cover {
-  height: 220rpx;
-  border-radius: 28rpx;
-  background: linear-gradient(135deg, #22c55e 0%, #0ea5e9 100%);
+.custom-nav {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  padding: calc(var(--status-bar-height, 44px) + 16rpx) 32rpx 18rpx;
   display: flex;
-  align-items: flex-end;
-  padding: 24rpx;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 88rpx;
 }
 
-.cover-tag {
-  padding: 12rpx 18rpx;
-  border-radius: 999rpx;
-  background: rgba(255, 255, 255, 0.18);
-  color: #ffffff;
-  font-size: 22rpx;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.avatar-block {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
 }
 
-.combo-title {
-  margin-top: 24rpx;
-  font-size: 32rpx;
+.avatar {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 20rpx;
+  background: #fff1e4;
+}
+
+.avatar-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+
+.avatar-title {
+  font-size: 28rpx;
   font-weight: 700;
-  color: #111827;
+  color: #1d2129;
+  letter-spacing: 0.5rpx;
 }
 
-.combo-subtitle {
-  margin-top: 10rpx;
-  font-size: 24rpx;
-  line-height: 1.7;
-  color: #6b7280;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+.avatar-sub {
+  font-size: 22rpx;
+  color: #86909c;
+  letter-spacing: 0.3rpx;
+}
+
+.banner-card {
+  position: relative;
+  margin: 0;
+  border-radius: 0;
   overflow: hidden;
+  background: #fff;
 }
 
-.combo-products {
-  margin-top: 24rpx;
+.banner-img {
+  width: 100%;
+  display: block;
+}
+
+.theme-list {
+  padding: 20rpx 32rpx 12rpx;
   display: flex;
-  flex-wrap: wrap;
-  gap: 14rpx;
+  flex-direction: column;
+  gap: 24rpx;
 }
 
-.product-chip {
-  padding: 14rpx 18rpx;
-  border-radius: 999rpx;
-  background: #eff6ff;
-  color: #2563eb;
-  font-size: 24rpx;
-  max-width: 100%;
+.theme-card {
+  border-radius: 28rpx;
+  padding: 28rpx 24rpx;
+  box-shadow: 0 6rpx 20rpx rgba(29, 33, 41, 0.04);
+  background: #fffaf5;
+}
+
+.theme-card--orange {
+  background: linear-gradient(180deg, #fff8ef 0%, #fffdf7 100%);
+}
+
+.theme-card--purple {
+  background: linear-gradient(180deg, #faf6ff 0%, #fdfbff 100%);
+}
+
+.theme-card--rose {
+  background: linear-gradient(180deg, #fff4f3 0%, #fffbfb 100%);
+}
+
+.theme-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18rpx;
+  margin-bottom: 24rpx;
+}
+
+.theme-head-left {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  flex: 1;
+  min-width: 0;
+}
+
+.theme-icon {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 16rpx;
+  flex-shrink: 0;
+}
+
+.theme-title-text {
+  min-width: 0;
+}
+
+.theme-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #1d2129;
+  line-height: 1.2;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.combo-reason {
-  margin-top: 24rpx;
-  font-size: 26rpx;
-  line-height: 1.8;
-  color: #374151;
-  display: -webkit-box;
-  -webkit-line-clamp: 5;
-  -webkit-box-orient: vertical;
+.theme-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6rpx;
+  padding: 8rpx 18rpx;
+  border-radius: 999rpx;
+  font-size: 20rpx;
+  flex-shrink: 0;
+  max-width: 52%;
+}
+
+.theme-tag-text {
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.theme-badge--orange {
+  background: #fff2e0;
+  color: #bc581c;
+}
+
+.theme-badge--purple {
+  background: #f1eaff;
+  color: #8055d8;
+}
+
+.theme-badge--rose {
+  background: #ffe7e4;
+  color: #e0584a;
+}
+
+.theme-products {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12rpx;
+}
+
+.theme-product {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.product-img-wrap {
+  width: 116rpx;
+  height: 116rpx;
+  border-radius: 50%;
+  background: #fdfbf9;
+  box-shadow: 0 2rpx 12rpx rgba(29, 33, 41, 0.05);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.product-img {
+  width: 100%;
+  height: 100%;
+}
+
+.product-img--placeholder {
+  background: linear-gradient(135deg, #fff3e3 0%, #ffe9cf 100%);
+}
+
+.product-name {
+  font-size: 22rpx;
+  color: #4e5969;
+  line-height: 1.3;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 100%;
 }
 
 .loading-card,
 .empty-card {
+  margin: 20rpx 32rpx 0;
   text-align: center;
+  background: linear-gradient(180deg, #fffaf4 0%, #fffdf8 100%);
 }
+
 .loading-text {
   font-size: 26rpx;
-  color: #64748b;
+  color: #86909c;
 }
-.load-more {
+
+.empty-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #1d2129;
+}
+
+.empty-sub {
   margin-top: 12rpx;
+  font-size: 24rpx;
+  color: #86909c;
+  line-height: 1.6;
+}
+
+.primary-btn {
+  margin: 28rpx auto 0;
+  padding: 20rpx 48rpx;
+  border-radius: 999rpx;
+  background: #bc581c;
+  color: #fdfbf9;
+  font-size: 26rpx;
+  font-weight: 600;
+  display: inline-block;
+  width: fit-content;
+}
+
+.load-more {
+  margin-top: 8rpx;
   padding: 16rpx 24rpx;
   text-align: center;
   font-size: 22rpx;
   color: #94a3b8;
 }
+
 .load-more--done {
   color: #cbd5e1;
+}
+
+.footer-copy {
+  margin-top: 36rpx;
+  text-align: center;
+  font-size: 22rpx;
+  color: #c9cdd4;
+  letter-spacing: 0.5rpx;
+  padding: 0 32rpx 32rpx;
 }
 </style>

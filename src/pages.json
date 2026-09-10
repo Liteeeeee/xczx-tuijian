@@ -16,6 +16,7 @@
     {
       "path": "pages/recommend/result",
       "style": {
+        "navigationStyle": "custom",
         "navigationBarTitleText": "推荐结果"
       }
     },
@@ -28,6 +29,7 @@
     {
       "path": "pages/combo/index",
       "style": {
+        "navigationStyle": "custom",
         "navigationBarTitleText": "营养组合"
       }
     },

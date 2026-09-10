@@ -1,5 +1,5 @@
 <script setup>
-import './uni.scss';
+import "./uni.scss";
 </script>
 
 <style lang="scss">
@@ -23,7 +23,6 @@ radio-group {
 
 .page-shell {
   min-height: 100vh;
-  padding: 32rpx;
 }
 
 .section-card {

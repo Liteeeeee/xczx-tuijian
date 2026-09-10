@@ -122,6 +122,7 @@ function loadState() {
         loggedIn: false,
         user: { ...defaultUser },
         lastAnswers: {},
+        lastQuestionText: '',
         recommendation: null,
         history: [],
       };
@@ -130,6 +131,7 @@ function loadState() {
     const lastAnswers = cached.lastAnswers && typeof cached.lastAnswers === 'object' && !Array.isArray(cached.lastAnswers)
       ? cached.lastAnswers
       : {};
+    const lastQuestionText = typeof cached.lastQuestionText === 'string' ? cached.lastQuestionText : '';
 
     let recommendation = extractRecommendationFromObject(cached);
 
@@ -139,6 +141,7 @@ function loadState() {
       loggedIn: Boolean(cached.loggedIn),
       user: { ...defaultUser, ...user },
       lastAnswers,
+      lastQuestionText,
       recommendation,
       history,
     };
@@ -147,6 +150,7 @@ function loadState() {
       loggedIn: false,
       user: { ...defaultUser },
       lastAnswers: {},
+      lastQuestionText: '',
       recommendation: null,
       history: [],
     };
@@ -170,6 +174,7 @@ export const useAppStore = defineStore('app', {
         loggedIn: this.loggedIn,
         user: toPlain(this.user),
         lastAnswers: toPlain(this.lastAnswers),
+        lastQuestionText: typeof this.lastQuestionText === 'string' ? this.lastQuestionText : '',
         recommendation: toPlain(this.recommendation),
         history: Array.isArray(this.history) ? this.history.map((h) => toPlain(h)).filter(Boolean) : [],
       };
@@ -303,6 +308,10 @@ export const useAppStore = defineStore('app', {
       this.lastAnswers = {
         ...payload,
       };
+      this.persist();
+    },
+    saveQuestionText(text) {
+      this.lastQuestionText = typeof text === 'string' ? text : '';
       this.persist();
     },
     saveRecommendation(data) {

@@ -496,6 +496,99 @@ const recommendMode = computed(() => {
   const v = recommendation.value && recommendation.value.recommendMode;
   return typeof v === "string" ? v : "";
 });
+const sessionTitle = computed(() => {
+  const v = recommendation.value;
+  if (!v) return "";
+  const cands = [v.title, v.firstPrompt, v.prompt, v.question];
+  for (const c of cands) if (typeof c === "string" && c.trim()) return c.trim();
+  return "";
+});
+const userQuestion = computed(() => {
+  if (sessionTitle.value) return sessionTitle.value;
+  const s =
+    typeof store.lastQuestionText === "string" ? store.lastQuestionText : "";
+  if (s) return s;
+  try {
+    if (typeof window !== "undefined" && window.__XZZX_LAST_QUESTION__) {
+      return String(window.__XZZX_LAST_QUESTION__);
+    }
+  } catch (ignore) {}
+  try {
+    const v = uni.getStorageSync("xczx-tuijian-last-question");
+    if (typeof v === "string" && v) return v;
+  } catch (ignore) {}
+  return "";
+});
+const questionDisplay = computed(() => {
+  const q = userQuestion.value;
+  let clean = [];
+  if (q) {
+    clean = q
+      .replace(/^\s+|\s+$/g, "")
+      .split(/\r?\n/g)
+      .filter((l) => l && l.trim())
+      .map((l) => {
+        const m = l.match(/^[^：:]*[：:](.*)$/);
+        if (m) return (m[1] || "").trim();
+        return l.trim();
+      })
+      .filter(Boolean)
+      .slice(0, 6);
+  }
+  if (!clean.length) {
+    if (products.value && products.value.length) {
+      return "请问我适合吃些什么？";
+    }
+    return "";
+  }
+  const joined = clean.join("、");
+  if (/适合吃些什么|推荐|请问|我想/.test(joined)) return joined;
+  return "请问" + joined + "、适合吃些什么？";
+});
+
+const productDesc = (product, idx) => {
+  if (!product) return "";
+  if (typeof product.reason === "string" && product.reason) {
+    const slice = product.reason.replace(/\r?\n/g, " ").slice(0, 30);
+    if (slice) return slice;
+  }
+  if (typeof product.description === "string" && product.description) {
+    return product.description.replace(/\r?\n/g, " ").slice(0, 30);
+  }
+  if (typeof product.sellingPoints === "string" && product.sellingPoints) {
+    return product.sellingPoints.slice(0, 24);
+  }
+  if (typeof product.features === "string" && product.features) {
+    return product.features.slice(0, 24);
+  }
+  const defaults = [
+    "果香浓郁，营养轻负担",
+    "酸甜绵软，早餐好搭档",
+    "原麦香浓，口感扎实",
+    "莓果叠加，活力一整天",
+    "软绵香甜，越嚼越香",
+    "双重果味，层次丰富",
+  ];
+  return defaults[idx % defaults.length];
+};
+
+const productCover = (product, idx) => {
+  if (!product) return "";
+  const c = [
+    product.cover,
+    product.image,
+    product.productImage,
+    product.pic,
+    product.img,
+    product.picture,
+    product.picUrl,
+    product.imageUrl,
+  ].find((x) => typeof x === "string" && x);
+  if (c) return c;
+  return idx % 2 === 0
+    ? "/static/images/推荐结果 demo/默认商品底图 1.png"
+    : "/static/images/推荐结果 demo/默认商品底图 2.png";
+};
 
 const modeText = computed(() => {
   const map = {
@@ -554,329 +647,350 @@ function openProduct(product) {
     icon: "none",
   });
 }
+
+function goBack() {
+  const pages = getCurrentPages();
+  if (pages && pages.length > 1) {
+    uni.navigateBack();
+    return;
+  }
+  uni.switchTab({
+    url: "/pages/index/index",
+  });
+}
 </script>
 
 <template>
   <view class="page-shell result-page">
-    <view class="section-card summary-card">
-      <view class="summary-head">
-        <view>
-          <view class="tag">{{ modeText }}</view>
-          <view class="section-title">为您推荐</view>
-        </view>
-        <view class="save-btn" @tap="saveReport">保存营养报告</view>
-      </view>
-      <view v-if="reply" class="reply-text">{{ reply }}</view>
-      <view v-else class="reply-text reply-empty"
-        >AI 正在完善您的专属推荐说明</view
-      >
-    </view>
-
-    <view v-if="products.length" class="section-card">
-      <view class="section-title">推荐商品</view>
-      <view class="section-subtitle">
-        共 {{ products.length }} 款，按匹配度由高到低排序
-      </view>
-      <view class="product-list">
-        <view
-          v-for="(product, idx) in products"
-          :key="product.productId || idx"
-          class="product-card"
-          @tap="openProduct(product)"
-        >
-          <view class="product-rank" v-if="idx < 3">{{
-            ["Top1", "Top2", "Top3"][idx]
-          }}</view>
-          <view class="product-main">
-            <view class="product-cover">{{
-              productInitial(product.productName)
-            }}</view>
-            <view class="product-info">
-              <view class="product-row">
-                <view class="product-name">{{ product.productName }}</view>
-                <view
-                  class="product-score"
-                  :class="scoreLevel(product.score).cls"
-                >
-                  {{ scoreLevel(product.score).label }}
-                  <text class="score-num">{{ product.score || 0 }}</text>
-                </view>
-              </view>
-              <view class="product-meta">
-                <text v-if="product.categoryName" class="meta-chip">{{
-                  product.categoryName
-                }}</text>
-                <text v-if="product.productCode" class="meta-chip meta-code"
-                  >编号 {{ product.productCode }}</text
-                >
-              </view>
-              <view class="product-reason" v-if="product.reason">{{
-                product.reason
-              }}</view>
-              <view class="product-bottom">
-                <view class="product-price">{{
-                  formatPrice(product.price, product.unit)
-                }}</view>
-                <view class="product-action">查看详情</view>
-              </view>
-            </view>
+    <view class="page-inner">
+      <view class="custom-nav">
+        <view class="avatar-block">
+          <image
+            class="avatar"
+            src="/static/images/推荐结果 demo/顶部 icon.png"
+            mode="aspectFit"
+          />
+          <view class="avatar-meta">
+            <view class="avatar-title">AI面包推荐官</view>
+            <view class="avatar-sub">用AI发现更适合你的美味生活</view>
           </view>
         </view>
       </view>
-    </view>
 
-    <view v-else class="section-card empty-card">
-      <view class="section-title">暂无结果</view>
-      <view class="section-subtitle">还未生成智能推荐结果，请先填写问卷</view>
-      <view class="debug-block">
-        <view class="debug-label"
-          >5 路取数 trace (1 query 2 window 3 globalData 4 storagePending 5
-          store)</view
+      <view v-if="loadingSession" class="empty-loading">
+        <view class="loading-dashed">正在加载历史详情…</view>
+      </view>
+
+      <template v-else>
+        <view v-if="questionDisplay" class="user-bubble">
+          <view class="user-bubble-card">
+            <text class="user-bubble-text">{{ questionDisplay }}</text>
+          </view>
+          <view class="user-avatar">
+            <text class="user-avatar-letter">U</text>
+          </view>
+        </view>
+
+        <view class="rec-title-block">
+          <view class="rec-title-left">
+            <image
+              class="rec-title-icon"
+              src="/static/images/推荐结果 demo/为你推荐 icon.png"
+              mode="aspectFit"
+            />
+            <text class="rec-title-text">为你推荐</text>
+          </view>
+        </view>
+      </template>
+
+      <view v-if="products.length && !loadingSession" class="grid-wrap">
+        <view
+          v-for="(product, idx) in products"
+          :key="product.productId || idx"
+          class="grid-item"
+          @tap="openProduct(product)"
         >
-        <view class="debug-text">{{ traceDebug || "(空)" }}</view>
-        <view class="debug-label">迁移状态</view>
-        <view class="debug-text">{{ migratedDebug || "(未执行)" }}</view>
-        <view class="debug-label">候选字段探查 (storage 实际落地)</view>
-        <view class="debug-text">{{ fieldsDebug || "(空)" }}</view>
-        <view class="debug-label">最终生效对象 (override or store)</view>
-        <view class="debug-text">{{ rawDebug || "(空)" }}</view>
-        <view class="debug-label">localStorage xczx-tuijian-app-state</view>
-        <view class="debug-text">{{ storageDebug || "(空)" }}</view>
+          <view class="grid-img-wrap">
+            <image
+              class="grid-img"
+              :src="productCover(product, idx)"
+              mode="aspectFill"
+            />
+          </view>
+          <view class="grid-text">
+            <view class="grid-name">{{ product.productName }}</view>
+            <view class="grid-desc">{{ productDesc(product, idx) }}</view>
+          </view>
+        </view>
+      </view>
+
+      <view
+        v-if="products.length && !loadingSession"
+        class="save-bottom"
+        @tap="saveReport"
+        >保存营养报告</view
+      >
+
+      <view v-if="!products.length && !loadingSession" class="empty-result">
+        <view class="empty-title">还未生成智能推荐结果</view>
+        <view class="empty-action" @tap="goRecommend">立即填写</view>
+        <view class="debug-block">
+          <view class="debug-label"
+            >5 路取数 trace (1 query 2 window 3 globalData 4 storagePending 5
+            store)</view
+          >
+          <view class="debug-text">{{ traceDebug || "(空)" }}</view>
+          <view class="debug-label">迁移状态</view>
+          <view class="debug-text">{{ migratedDebug || "(未执行)" }}</view>
+          <view class="debug-label">候选字段探查 (storage 实际落地)</view>
+          <view class="debug-text">{{ fieldsDebug || "(空)" }}</view>
+          <view class="debug-label">最终生效对象 (override or store)</view>
+          <view class="debug-text">{{ rawDebug || "(空)" }}</view>
+          <view class="debug-label">localStorage xczx-tuijian-app-state</view>
+          <view class="debug-text">{{ storageDebug || "(空)" }}</view>
+        </view>
       </view>
     </view>
-
-    <view class="ghost-btn" @tap="goRecommend">重新填写问卷</view>
   </view>
 </template>
 
 <style lang="scss" scoped>
 .result-page {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  background-color: #fff8f1;
+  background-image: url("/static/images/推荐结果 demo/background.png");
+  background-size: cover;
+  background-position: top center;
+  background-repeat: no-repeat;
+}
+
+.page-inner {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 24rpx;
-  padding-bottom: 48rpx;
+  gap: 28rpx;
+  padding: 0 32rpx 48rpx;
+  min-height: 100vh;
 }
 
-.summary-card {
-  position: relative;
-  background: linear-gradient(135deg, #0f172a 0%, #0f766e 60%, #14b8a6 100%);
-  color: #ffffff;
+.custom-nav {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: center;
+  padding-top: calc(var(--status-bar-height, 44px) + 16rpx);
+  padding-bottom: 18rpx;
+}
+
+.avatar-block {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-left: 0;
+}
+
+.avatar {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 20rpx;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
-.summary-card::after {
+.avatar-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+  min-width: 0;
+}
+
+.avatar-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #1d2129;
+  line-height: 1.2;
+}
+
+.avatar-sub {
+  font-size: 22rpx;
+  color: #86909c;
+  line-height: 1.4;
+}
+
+.empty-loading {
+  padding: 80rpx 0 40rpx;
+  display: flex;
+  justify-content: center;
+}
+.loading-dashed {
+  padding: 24rpx 40rpx;
+  border: 2rpx dashed #c7a485;
+  border-radius: 20rpx;
+  color: #8b6746;
+  font-size: 26rpx;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.user-bubble {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 16rpx;
+  padding-top: 8rpx;
+}
+
+.user-bubble-card {
+  position: relative;
+  max-width: 75%;
+  padding: 22rpx 24rpx;
+  border-radius: 24rpx 8rpx 24rpx 24rpx;
+  background: #ffffff;
+  box-shadow: 0 6rpx 20rpx rgba(29, 33, 41, 0.06);
+}
+
+.user-bubble-card::after {
   content: "";
   position: absolute;
-  right: -80rpx;
-  top: -80rpx;
-  width: 280rpx;
-  height: 280rpx;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
+  top: 22rpx;
+  right: -10rpx;
+  width: 0;
+  height: 0;
+  border-top: 10rpx solid transparent;
+  border-bottom: 10rpx solid transparent;
+  border-left: 12rpx solid #ffffff;
 }
 
-.summary-head {
-  position: relative;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 20rpx;
-}
-
-.save-btn {
-  padding: 14rpx 22rpx;
-  border-radius: 999rpx;
-  background: rgba(255, 255, 255, 0.14);
-  font-size: 24rpx;
-  color: #ffffff;
-}
-
-.reply-text {
-  position: relative;
-  margin-top: 28rpx;
-  padding: 24rpx;
-  border-radius: 24rpx;
-  background: rgba(255, 255, 255, 0.1);
+.user-bubble-text {
   font-size: 28rpx;
-  line-height: 1.8;
-  color: rgba(255, 255, 255, 0.95);
+  line-height: 1.7;
+  color: #1d2129;
 }
 
-.reply-empty {
-  color: rgba(255, 255, 255, 0.6);
-  font-style: italic;
-}
-
-.product-list {
-  margin-top: 24rpx;
-  display: flex;
-  flex-direction: column;
-  gap: 20rpx;
-}
-
-.product-card {
-  position: relative;
-  padding: 24rpx;
-  border-radius: 28rpx;
-  background: #ffffff;
-  border: 2rpx solid #f1f5f9;
-  box-shadow: 0 12rpx 32rpx rgba(15, 23, 42, 0.04);
-}
-
-.product-rank {
-  position: absolute;
-  top: 0;
-  left: 0;
-  padding: 8rpx 18rpx;
-  border-top-left-radius: 28rpx;
-  border-bottom-right-radius: 20rpx;
-  background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
-  color: #ffffff;
-  font-size: 22rpx;
-  font-weight: 700;
-  letter-spacing: 1rpx;
-}
-
-.product-main {
-  display: flex;
-  gap: 20rpx;
-  align-items: flex-start;
-}
-
-.product-cover {
+.user-avatar {
   flex-shrink: 0;
-  width: 160rpx;
-  height: 160rpx;
-  border-radius: 24rpx;
-  background: linear-gradient(135deg, #dcfce7 0%, #e0f2fe 100%);
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ffb088 0%, #ff8899 100%);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 56rpx;
-  font-weight: 800;
-  color: #0f766e;
-  margin-top: 8rpx;
+  margin-top: 4rpx;
 }
 
-.product-info {
-  flex: 1;
-  min-width: 0;
+.user-avatar-letter {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.rec-title-block {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+  padding: 12rpx 4rpx 4rpx;
+}
+
+.rec-title-icon {
+  width: 56rpx;
+  height: 56rpx;
+  flex-shrink: 0;
+  border-radius: 16rpx;
+  background: #ffffff;
+  box-shadow: 0 4rpx 12rpx rgba(29, 33, 41, 0.06);
+}
+
+.rec-title-text {
+  font-size: 36rpx;
+  font-weight: 800;
+  color: #a24617;
+  line-height: 1.2;
+  letter-spacing: 2rpx;
+}
+
+.grid-wrap {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20rpx;
+  padding-top: 8rpx;
+}
+
+.grid-item {
+  background: #ffffff;
+  border-radius: 28rpx;
+  overflow: hidden;
+  box-shadow: 0 8rpx 24rpx rgba(29, 33, 41, 0.06);
   display: flex;
   flex-direction: column;
-  gap: 10rpx;
 }
 
-.product-row {
+.grid-img-wrap {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  padding: 16rpx;
+  box-sizing: border-box;
+  background: linear-gradient(160deg, #fffaf3 0%, #fff4e6 100%);
+}
+
+.grid-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 20rpx;
+  background: #faf0e3;
+}
+
+.grid-text {
+  padding: 14rpx 20rpx 22rpx;
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16rpx;
+  flex-direction: column;
+  gap: 8rpx;
 }
 
-.product-name {
-  flex: 1;
-  min-width: 0;
-  font-size: 30rpx;
+.grid-name {
+  font-size: 28rpx;
   font-weight: 700;
-  color: #0f172a;
-  line-height: 1.4;
-  padding-right: 8rpx;
+  color: #1d2129;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 
-.product-score {
-  flex-shrink: 0;
-  padding: 6rpx 16rpx;
-  border-radius: 999rpx;
+.grid-desc {
   font-size: 22rpx;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 6rpx;
+  color: #86909c;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 
-.score-num {
-  font-weight: 800;
-  font-size: 24rpx;
-}
-
-.score-high {
-  background: rgba(16, 185, 129, 0.12);
-  color: #047857;
-}
-
-.score-mid {
-  background: rgba(245, 158, 11, 0.12);
-  color: #b45309;
-}
-
-.score-low {
-  background: rgba(148, 163, 184, 0.16);
-  color: #475569;
-}
-
-.score-zero {
-  background: rgba(241, 245, 249, 0.8);
-  color: #64748b;
-}
-
-.product-meta {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10rpx;
-}
-
-.meta-chip {
-  padding: 6rpx 14rpx;
-  border-radius: 999rpx;
-  background: #eff6ff;
-  color: #2563eb;
-  font-size: 22rpx;
-  font-weight: 500;
-}
-
-.meta-code {
-  background: #f8fafc;
-  color: #64748b;
-}
-
-.product-reason {
-  margin-top: 4rpx;
-  padding: 16rpx 18rpx;
-  border-radius: 18rpx;
-  background: #f8fafc;
-  font-size: 24rpx;
-  line-height: 1.7;
-  color: #475569;
-  border-left: 6rpx solid #28c4b8;
-}
-
-.product-bottom {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 12rpx;
-}
-
-.product-price {
-  font-size: 34rpx;
-  font-weight: 800;
-  color: #dc2626;
-  letter-spacing: -0.5rpx;
-}
-
-.product-action {
-  padding: 12rpx 24rpx;
-  border-radius: 999rpx;
-  background: #0f766e;
-  color: #ffffff;
-  font-size: 24rpx;
-  font-weight: 600;
-}
-
-.empty-card {
-  padding: 48rpx 32rpx;
+.empty-result {
+  padding: 60rpx 32rpx 48rpx;
   text-align: center;
+  background: rgba(255, 255, 255, 0.88);
+  border-radius: 28rpx;
+  box-shadow: 0 8rpx 24rpx rgba(29, 33, 41, 0.05);
+}
+
+.empty-title {
+  font-size: 30rpx;
+  color: #4e5969;
+  margin-bottom: 24rpx;
+}
+
+.empty-action {
+  display: inline-block;
+  padding: 18rpx 56rpx;
+  border-radius: 999rpx;
+  background: linear-gradient(135deg, #bc581c 0%, #d9743a 100%);
+  color: #ffffff;
+  font-size: 28rpx;
+  font-weight: 600;
+  box-shadow: 0 6rpx 16rpx rgba(188, 88, 28, 0.2);
 }
 
 .debug-block {
@@ -905,5 +1019,19 @@ function openProduct(product) {
   color: #cbd5e1;
   max-height: 400rpx;
   overflow: hidden;
+}
+
+.save-bottom {
+  margin-top: 16rpx;
+  padding: 28rpx 0;
+  text-align: center;
+  border-radius: 999rpx;
+  background: linear-gradient(135deg, #bc581c 0%, #d9743a 100%);
+  color: #ffffff;
+  font-size: 30rpx;
+  font-weight: 700;
+  letter-spacing: 2rpx;
+  box-shadow: 0 8rpx 24rpx rgba(188, 88, 28, 0.28);
+  padding-bottom: calc(28rpx + env(safe-area-inset-bottom, 0px));
 }
 </style>

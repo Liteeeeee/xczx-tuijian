@@ -179,6 +179,21 @@ async function submitForm() {
   let polledRaw = null;
   try {
     const prompt = buildPrompt();
+    try {
+      if (typeof store.saveQuestionText === "function") {
+        store.saveQuestionText(prompt);
+      }
+    } catch (ignore) {
+      // ignore
+    }
+    try {
+      if (typeof window !== "undefined") {
+        window.__XZZX_LAST_QUESTION__ = prompt;
+      }
+    } catch (ignore) {}
+    try {
+      uni.setStorageSync("xczx-tuijian-last-question", prompt);
+    } catch (ignore) {}
     const taskId = genTaskId();
     await aiChatAsync({ taskId, prompt });
     const polled = await pollResult(taskId);
