@@ -636,9 +636,15 @@ function goRecommend() {
 
 function saveReport() {
   uni.showToast({
-    title: "营养报告已暂存",
+    title: "营养报告已保存",
     icon: "success",
+    duration: 1500,
   });
+  setTimeout(() => {
+    uni.switchTab({
+      url: "/pages/index/index",
+    });
+  }, 1500);
 }
 
 function openProduct(product) {
