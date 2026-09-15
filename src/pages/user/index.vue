@@ -25,7 +25,11 @@ function logout() {
   uni.showToast({
     title: '已退出账号',
     icon: 'success',
+    duration: 1200,
   });
+  setTimeout(() => {
+    uni.reLaunch({ url: '/pages/user/login' });
+  }, 1200);
 }
 </script>
 
