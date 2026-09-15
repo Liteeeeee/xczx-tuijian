@@ -6,7 +6,17 @@
 // 2. 成功码为 200，响应为平铺结构（{ code, msg, ...业务字段 }），无统一 data 包装。
 // 3. 登录后自动注入 Authorization: Bearer <token>。
 
-const BASE_URL = '';
+function resolveBaseUrl() {
+  try {
+    const userVite = typeof __API_BASE_URL__ === 'string' ? __API_BASE_URL__ : '';
+    if (userVite) return userVite.replace(/\/+$/, '');
+  } catch (ignore) {
+    // ignore
+  }
+  return '';
+}
+
+const BASE_URL = resolveBaseUrl();
 
 const TOKEN_KEY = 'xczx-tuijian-access-token';
 const STATE_KEY = 'xczx-tuijian-app-state';

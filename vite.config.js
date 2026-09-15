@@ -9,6 +9,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     base: basePath,
+    publicDir: 'static',
     plugins: [uni()],
     resolve: {
       alias: {

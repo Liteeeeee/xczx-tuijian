@@ -7,7 +7,7 @@
     "dev:h5": "uni -p h5",
     "build:h5": "uni build -p h5",
     "build:mp-weixin": "uni build -p mp-weixin",
-    "build:prod": "rm -rf dist && uni build -p h5 --mode production && cp -R dist/build/h5/. dist/ && rm -rf dist/build"
+    "build:prod": "node scripts/build-prod.js"
   },
   "dependencies": {
     "@dcloudio/uni-app": "3.0.0-alpha-5020520260829001",
