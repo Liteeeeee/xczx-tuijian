@@ -11,7 +11,7 @@
     <view class="section-card">
       <view class="section-title">版权信息</view>
       <view class="content-text">
-        Copyright © www.xiancaozhenxuan.com, All Rights Reserved.
+        Copyright © www.xiancaozhenxuan.cn, All Rights Reserved.
       </view>
     </view>
   </view>
