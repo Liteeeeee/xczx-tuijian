@@ -338,168 +338,311 @@ async function submitForm() {
 </script>
 
 <template>
-  <view class="page-shell question-page">
-    <view class="section-card top-card">
-      <view class="tag">智能推荐</view>
-      <view class="section-title">{{
-        template && template.templateName
-          ? template.templateName
-          : "营养方案问卷"
-      }}</view>
-      <view class="section-subtitle"
-        >根据您的选择，AI 将为您生成专属营养推荐。</view
-      >
+  <view class="question-page">
+    <view class="question-inner">
+      <view class="custom-nav">
+        <view class="avatar-block">
+          <image
+            class="avatar"
+            src="/static/images/推荐结果 demo/顶部 icon.png"
+            mode="aspectFit"
+          />
+          <view class="avatar-meta">
+            <view class="avatar-title">AI面包推荐官</view>
+            <view class="avatar-sub">用AI发现更适合你的美味生活</view>
+          </view>
+        </view>
+      </view>
+
+      <view v-if="loading" class="loading-tip">问卷加载中…</view>
+
+      <template v-else-if="items.length">
+        <view class="form-card">
+          <view
+            v-for="(item, qIdx) in items"
+            :key="item.itemId"
+            class="q-block"
+          >
+            <view class="q-title">{{ `${qIdx + 1}.${item.question}` }}</view>
+
+            <view v-if="item.questionType === 'radio'" class="opt-grid">
+              <view
+                v-for="option in item.options"
+                :key="option"
+                class="opt-pill"
+                :class="{ active: form[item.itemId] === option }"
+                @tap="selectOption(item.itemId, option)"
+              >
+                <view class="opt-radio">
+                  <view
+                    v-if="form[item.itemId] === option"
+                    class="opt-radio-dot"
+                  ></view>
+                </view>
+                <text class="opt-text">{{ option }}</text>
+              </view>
+            </view>
+
+            <view v-else-if="item.questionType === 'checkbox'" class="opt-grid">
+              <view
+                v-for="option in item.options"
+                :key="option"
+                class="opt-pill"
+                :class="{ active: (form[item.itemId] || []).includes(option) }"
+                @tap="toggleOption(item.itemId, option)"
+              >
+                <view class="opt-check">
+                  <text
+                    v-if="(form[item.itemId] || []).includes(option)"
+                    class="opt-check-tick"
+                    >✓</text
+                  >
+                </view>
+                <text class="opt-text">{{ option }}</text>
+              </view>
+            </view>
+
+            <view v-else class="field-wrap">
+              <input
+                v-model="form[item.itemId]"
+                class="field-input"
+                type="text"
+                placeholder="请输入喜欢的食材，如蓝莓、坚果、全麦"
+                placeholder-class="field-placeholder"
+              />
+            </view>
+          </view>
+        </view>
+
+        <view
+          class="submit-bottom"
+          :class="{ disabled: submitting }"
+          @tap="submitForm"
+        >
+          {{ submitting ? "正在生成推荐…" : "查看推荐" }}
+        </view>
+        <view class="safe-bottom-spacer"></view>
+      </template>
+
+      <view v-else class="empty-tip">暂无问卷题目</view>
     </view>
-
-    <view v-if="loading" class="section-card loading-card">问卷加载中…</view>
-
-    <template v-else-if="items.length">
-      <view
-        v-for="item in items"
-        :key="item.itemId"
-        class="section-card question-card"
-      >
-        <view class="question-title">{{ item.question }}</view>
-
-        <view v-if="item.questionType === 'radio'" class="option-list">
-          <view
-            v-for="option in item.options"
-            :key="option"
-            class="option-item"
-            :class="{ active: form[item.itemId] === option }"
-            @tap="selectOption(item.itemId, option)"
-          >
-            <view class="option-radio"></view>
-            <text>{{ option }}</text>
-          </view>
-        </view>
-
-        <view v-else-if="item.questionType === 'checkbox'" class="option-list">
-          <view
-            v-for="option in item.options"
-            :key="option"
-            class="option-item"
-            :class="{ active: (form[item.itemId] || []).includes(option) }"
-            @tap="toggleOption(item.itemId, option)"
-          >
-            <view class="option-check"></view>
-            <text>{{ option }}</text>
-          </view>
-        </view>
-
-        <input
-          v-else
-          v-model="form[item.itemId]"
-          class="field-input"
-          type="text"
-          placeholder="请输入"
-        />
-      </view>
-
-      <view
-        class="primary-btn submit-btn"
-        :class="{ disabled: submitting }"
-        @tap="submitForm"
-      >
-        {{ submitting ? "正在生成推荐…" : "查看推荐" }}
-      </view>
-    </template>
-
-    <view v-else class="section-card empty-card">暂无问卷题目</view>
   </view>
 </template>
 
 <style lang="scss" scoped>
 .question-page {
+  min-height: 100vh;
+  background: url("/static/images/推荐结果 demo/background.png") no-repeat top
+    center / cover;
+  background-color: #fff8f1;
+}
+
+.question-inner {
+  padding: 0 28rpx 40rpx;
   display: flex;
   flex-direction: column;
   gap: 24rpx;
-  padding-bottom: 48rpx;
 }
 
-.top-card {
-  background: linear-gradient(180deg, #ffffff 0%, #eff6ff 100%);
+.custom-nav {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: center;
+  padding-top: calc(var(--status-bar-height, 44px) + 16rpx);
+  padding-bottom: 14rpx;
 }
 
-.question-title {
+.avatar-block {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.avatar {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 18rpx;
+  background: #ffffff;
+  box-shadow: 0 4rpx 14rpx rgba(29, 33, 41, 0.08);
+}
+
+.avatar-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+
+.avatar-title {
   font-size: 30rpx;
-  font-weight: 700;
-  color: #111827;
+  font-weight: 800;
+  color: #1d2129;
+  letter-spacing: 1rpx;
 }
 
-.option-list {
-  margin-top: 28rpx;
+.avatar-sub {
+  font-size: 22rpx;
+  color: #86909c;
+}
+
+.loading-tip,
+.empty-tip {
+  padding: 80rpx 0;
+  text-align: center;
+  font-size: 28rpx;
+  color: #86909c;
+}
+
+.form-card {
+  background: #ffffff;
+  border-radius: 28rpx;
+  padding: 36rpx 32rpx 16rpx;
+  box-shadow: 0 6rpx 24rpx rgba(29, 33, 41, 0.06);
+}
+
+.q-block {
+  margin-bottom: 36rpx;
+}
+
+.q-title {
+  font-size: 28rpx;
+  font-weight: 800;
+  color: #a24617;
+  letter-spacing: 1rpx;
+  margin-bottom: 22rpx;
+}
+
+.opt-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18rpx;
 }
 
-.option-item {
+.opt-pill {
   display: flex;
   align-items: center;
   gap: 16rpx;
-  min-height: 96rpx;
+  min-height: 84rpx;
   padding: 0 24rpx;
-  border-radius: 24rpx;
-  border: 2rpx solid #e5e7eb;
-  background: #f8fafc;
-  font-size: 28rpx;
-  color: #374151;
+  border-radius: 999rpx;
+  background: #fff3e6;
+  border: 2rpx solid transparent;
+  transition: all 0.15s ease;
 }
 
-.option-item.active {
-  border-color: #28c4b8;
-  background: rgba(40, 196, 184, 0.1);
-  color: #0f766e;
+.opt-pill.active {
+  background: #ffe1c9;
+  border-color: #bc581c;
 }
 
-.option-radio,
-.option-check {
-  width: 26rpx;
-  height: 26rpx;
+.opt-radio {
+  width: 30rpx;
+  height: 30rpx;
   border-radius: 50%;
-  border: 4rpx solid #cbd5e1;
+  border: 3rpx solid #c9cdd4;
   background: #ffffff;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.option-check {
+.opt-pill.active .opt-radio {
+  border-color: #bc581c;
+}
+
+.opt-radio-dot {
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 50%;
+  background: #bc581c;
+}
+
+.opt-check {
+  width: 30rpx;
+  height: 30rpx;
   border-radius: 8rpx;
+  border: 3rpx solid #c9cdd4;
+  background: #ffffff;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.option-item.active .option-radio {
-  border-color: #28c4b8;
-  background: radial-gradient(circle, #28c4b8 0 50%, #ffffff 51% 100%);
+.opt-pill.active .opt-check {
+  border-color: #bc581c;
+  background: #bc581c;
 }
 
-.option-item.active .option-check {
-  border-color: #28c4b8;
-  background: #28c4b8;
+.opt-check-tick {
+  font-size: 22rpx;
+  color: #ffffff;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.opt-text {
+  font-size: 28rpx;
+  color: #4e5969;
+  font-weight: 500;
+}
+
+.opt-pill.active .opt-text {
+  color: #8a3d12;
+  font-weight: 700;
+}
+
+.field-wrap {
+  width: 100%;
 }
 
 .field-input {
-  margin-top: 28rpx;
-  height: 92rpx;
-  padding: 0 24rpx;
+  width: 100%;
+  min-height: 88rpx;
+  padding: 0 28rpx;
   border-radius: 24rpx;
-  border: 2rpx solid #e5e7eb;
-  background: #f8fafc;
+  background: #fff3e6;
+  border: 2rpx solid transparent;
   font-size: 28rpx;
+  color: #1d2129;
+  box-sizing: border-box;
 }
 
-.loading-card,
-.empty-card {
-  padding: 48rpx 32rpx;
+.field-input:focus {
+  background: #ffffff;
+  border-color: #bc581c;
+}
+
+.field-placeholder {
+  color: #a4a9ad;
+  font-size: 26rpx;
+}
+
+.submit-bottom {
+  margin-top: 4rpx;
+  height: 96rpx;
+  line-height: 96rpx;
+  flex-shrink: 0;
   text-align: center;
-  font-size: 28rpx;
-  color: #6b7280;
+  border-radius: 999rpx;
+  background: linear-gradient(135deg, #bc581c 0%, #d9743a 100%);
+  color: #ffffff;
+  font-size: 32rpx;
+  font-weight: 800;
+  letter-spacing: 4rpx;
+  box-shadow: 0 8rpx 24rpx rgba(188, 88, 28, 0.28);
+  -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
 }
 
-.submit-btn {
-  margin-top: 8rpx;
-}
-
-.submit-btn.disabled {
+.submit-bottom.disabled {
   opacity: 0.6;
+}
+
+.safe-bottom-spacer {
+  width: 100%;
+  height: constant(safe-area-inset-bottom);
+  height: env(safe-area-inset-bottom);
+  flex-shrink: 0;
 }
 </style>

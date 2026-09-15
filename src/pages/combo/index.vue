@@ -120,9 +120,16 @@ function comboProducts(combo) {
   if (!combo) return [];
   const items = Array.isArray(combo.items) ? combo.items : [];
   if (items.length) {
-    return items.slice(0, 4).map((it) => ({
+    return items.map((it) => ({
       name: it.productName || it.name || it.title || "商品",
-      image: it.cover || it.image || it.pic || it.productImage || "",
+      image:
+        it.coverImage ||
+        it.cover ||
+        it.itemCover ||
+        it.image ||
+        it.pic ||
+        it.productImage ||
+        "",
     }));
   }
   const names = splitKeywords(combo.productNames);
@@ -130,22 +137,12 @@ function comboProducts(combo) {
     return names.map((n) => ({ name: n, image: "" }));
   }
   if (Number(combo.productCount) > 0) {
-    return Array.from(
-      { length: Math.min(4, Number(combo.productCount)) },
-      (_, i) => ({
-        name: `商品${i + 1}`,
-        image: "",
-      }),
-    );
+    return Array.from({ length: Number(combo.productCount) }, (_, i) => ({
+      name: `商品${i + 1}`,
+      image: "",
+    }));
   }
   return [];
-}
-
-function paddedProducts(combo) {
-  const list = comboProducts(combo);
-  while (list.length < 4)
-    list.push({ name: "敬请期待", image: "", placeholder: true });
-  return list.slice(0, 4);
 }
 </script>
 
@@ -215,24 +212,29 @@ function paddedProducts(combo) {
           </view>
         </view>
 
-        <view class="theme-products">
-          <view
-            v-for="(p, pidx) in paddedProducts(combo)"
-            :key="pidx"
-            class="theme-product"
-          >
-            <view class="product-img-wrap">
-              <image
-                v-if="p.image"
-                class="product-img"
-                :src="p.image"
-                mode="aspectFill"
-              />
-              <view v-else class="product-img product-img--placeholder"></view>
+        <scroll-view class="theme-products" scroll-x show-scrollbar="false">
+          <view class="theme-products-inner">
+            <view
+              v-for="(p, pidx) in comboProducts(combo)"
+              :key="pidx"
+              class="theme-product"
+            >
+              <view class="product-img-wrap">
+                <image
+                  v-if="p.image"
+                  class="product-img"
+                  :src="p.image"
+                  mode="aspectFill"
+                />
+                <view
+                  v-else
+                  class="product-img product-img--placeholder"
+                ></view>
+              </view>
+              <view class="product-name">{{ p.name }}</view>
             </view>
-            <view class="product-name">{{ p.name }}</view>
           </view>
-        </view>
+        </scroll-view>
       </view>
 
       <view v-if="!rows.length" class="theme-card empty-card">
@@ -423,16 +425,24 @@ function paddedProducts(combo) {
 }
 
 .theme-products {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12rpx;
+  width: 100%;
+  white-space: nowrap;
+}
+
+.theme-products-inner {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 20rpx;
+  padding: 4rpx 4rpx 12rpx;
 }
 
 .theme-product {
-  display: flex;
+  display: inline-flex;
   flex-direction: column;
   align-items: center;
   gap: 12rpx;
+  flex-shrink: 0;
+  width: 136rpx;
 }
 
 .product-img-wrap {

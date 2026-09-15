@@ -736,6 +736,10 @@ function goBack() {
         @tap="saveReport"
         >保存营养报告</view
       >
+      <view
+        v-if="products.length && !loadingSession"
+        class="save-bottom-spacer"
+      ></view>
 
       <view v-if="!products.length && !loadingSession" class="empty-result">
         <view class="empty-title">还未生成智能推荐结果</view>
@@ -1029,7 +1033,9 @@ function goBack() {
 
 .save-bottom {
   margin-top: 16rpx;
-  padding: 28rpx 0;
+  height: 92rpx;
+  line-height: 92rpx;
+  flex-shrink: 0;
   text-align: center;
   border-radius: 999rpx;
   background: linear-gradient(135deg, #bc581c 0%, #d9743a 100%);
@@ -1038,6 +1044,14 @@ function goBack() {
   font-weight: 700;
   letter-spacing: 2rpx;
   box-shadow: 0 8rpx 24rpx rgba(188, 88, 28, 0.28);
-  padding-bottom: calc(28rpx + env(safe-area-inset-bottom, 0px));
+  -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
+}
+
+.save-bottom-spacer {
+  width: 100%;
+  height: constant(safe-area-inset-bottom);
+  height: env(safe-area-inset-bottom);
+  flex-shrink: 0;
 }
 </style>

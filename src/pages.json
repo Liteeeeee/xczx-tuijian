@@ -10,6 +10,7 @@
     {
       "path": "pages/recommend/question",
       "style": {
+        "navigationStyle": "custom",
         "navigationBarTitleText": "智能推荐"
       }
     },
