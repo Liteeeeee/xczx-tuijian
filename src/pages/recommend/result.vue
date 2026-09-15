@@ -377,107 +377,13 @@ onLoad(async (options) => {
   }
 });
 
-const rawDebug = ref("");
-const storageDebug = ref("");
-const migratedDebug = ref("");
-const fieldsDebug = ref("");
-const traceDebug = ref("");
-
-const CANDIDATE_KEYS = [
-  "recommendation",
-  "recommendationText",
-  "recommendation_text",
-  "recommendationStr",
-  "recommendation_str",
-  "recommendationData",
-  "recommendation_data",
-  "recommendationResult",
-  "recommendation_result",
-  "rec",
-  "recResult",
-  "rec_result",
-  "aiResult",
-  "ai_result",
-  "aiRecommendation",
-  "ai_recommendation",
-  "result",
-  "data",
-  "payload",
-  "chatResult",
-  "chat_result",
-  "content",
-  "message",
-];
-
 onMounted(() => {
-  let migrateInfo = null;
   try {
     if (typeof store.migrateIfNeeded === "function") {
-      migrateInfo = store.migrateIfNeeded();
+      store.migrateIfNeeded();
     }
-  } catch (error) {
-    migratedDebug.value =
-      "migrate error: " + String((error && error.message) || error);
-  }
-  if (!migratedDebug.value) {
-    migratedDebug.value = JSON.stringify(migrateInfo || null);
-  }
-
-  try {
-    rawDebug.value = JSON.stringify(
-      override.value || store.recommendation || null,
-      null,
-      2,
-    ).slice(0, 600);
-  } catch (error) {
-    rawDebug.value = String((error && error.message) || error);
-  }
-  traceDebug.value = trace.value.join(" | ");
-
-  try {
-    const s = uni.getStorageSync("xczx-tuijian-app-state");
-    let parsed = s;
-    if (typeof s === "string" && s) {
-      try {
-        parsed = JSON.parse(s);
-      } catch (ignore) {
-        /* ignore */
-      }
-    }
-    if (typeof parsed === "object" && parsed && !Array.isArray(parsed)) {
-      const lines = [];
-      lines.push("actual storage object keys=" + Object.keys(parsed).join(","));
-      for (const k of CANDIDATE_KEYS) {
-        if (k in parsed === false) continue;
-        const v = parsed[k];
-        let tail = "";
-        if (typeof v === "string") {
-          tail = " string(len=" + v.length + ") sample=" + v.slice(0, 60);
-        } else if (v && typeof v === "object") {
-          tail =
-            " object keys=" +
-            Object.keys(v).join(",") +
-            " products=" +
-            (Array.isArray(v.products) ? v.products.length : "no");
-        } else {
-          tail = " " + typeof v + "=" + String(v).slice(0, 40);
-        }
-        lines.push("  [" + k + "]" + tail);
-      }
-      fieldsDebug.value = lines.join("\n").slice(0, 900);
-    } else {
-      fieldsDebug.value =
-        "storage 解析失败，raw typeof=" +
-        typeof s +
-        " content=" +
-        (typeof s === "string" ? s.slice(0, 300) : String(s).slice(0, 300));
-    }
-    storageDebug.value =
-      typeof s === "string"
-        ? s.slice(0, 500)
-        : JSON.stringify(s || null).slice(0, 500);
-  } catch (error) {
-    storageDebug.value = String((error && error.message) || error);
+  } catch (ignore) {
+    /* ignore */
   }
 });
 
@@ -744,21 +650,6 @@ function goBack() {
       <view v-if="!products.length && !loadingSession" class="empty-result">
         <view class="empty-title">还未生成智能推荐结果</view>
         <view class="empty-action" @tap="goRecommend">立即填写</view>
-        <view class="debug-block">
-          <view class="debug-label"
-            >5 路取数 trace (1 query 2 window 3 globalData 4 storagePending 5
-            store)</view
-          >
-          <view class="debug-text">{{ traceDebug || "(空)" }}</view>
-          <view class="debug-label">迁移状态</view>
-          <view class="debug-text">{{ migratedDebug || "(未执行)" }}</view>
-          <view class="debug-label">候选字段探查 (storage 实际落地)</view>
-          <view class="debug-text">{{ fieldsDebug || "(空)" }}</view>
-          <view class="debug-label">最终生效对象 (override or store)</view>
-          <view class="debug-text">{{ rawDebug || "(空)" }}</view>
-          <view class="debug-label">localStorage xczx-tuijian-app-state</view>
-          <view class="debug-text">{{ storageDebug || "(空)" }}</view>
-        </view>
       </view>
     </view>
   </view>
@@ -1001,34 +892,6 @@ function goBack() {
   font-size: 28rpx;
   font-weight: 600;
   box-shadow: 0 6rpx 16rpx rgba(188, 88, 28, 0.2);
-}
-
-.debug-block {
-  margin-top: 32rpx;
-  padding: 20rpx;
-  border-radius: 16rpx;
-  background: rgba(15, 23, 42, 0.92);
-  color: #e2e8f0;
-  text-align: left;
-}
-.debug-label {
-  font-size: 22rpx;
-  font-weight: 600;
-  color: #fbbf24;
-  margin-top: 12rpx;
-}
-.debug-label:first-child {
-  margin-top: 0;
-}
-.debug-text {
-  margin-top: 8rpx;
-  font-size: 20rpx;
-  line-height: 1.55;
-  word-break: break-all;
-  white-space: pre-wrap;
-  color: #cbd5e1;
-  max-height: 400rpx;
-  overflow: hidden;
 }
 
 .save-bottom {
