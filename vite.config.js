@@ -25,6 +25,12 @@ export default defineConfig(({ mode }) => {
       port: Number(env.VITE_PORT || 5173),
       strictPort: false,
       proxy: {
+        // ===== 生产前缀（对齐 XCZX-admin 商城 C 端 /app-api）=====
+        '/app-api': {
+          target: env.VITE_DEV_TARGET || 'http://192.168.110.11:18081',
+          changeOrigin: true,
+        },
+        // ===== 旧前缀兼容（开发期本地联调 C 端 /app 路径的历史代码）=====
         '/app': {
           target: env.VITE_DEV_TARGET || 'http://192.168.110.11:18081',
           changeOrigin: true,
