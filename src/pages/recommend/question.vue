@@ -102,10 +102,41 @@ function normalizeAiPayload(raw) {
   if (typeof raw === "string") return raw;
   if (Array.isArray(raw)) return raw[0];
   if (typeof raw !== "object") return null;
+  const arrCandidates = [
+    raw.items,
+    raw.rows,
+    raw.combos,
+    raw.list,
+    raw.productList,
+    raw.itemList,
+    raw.comboList,
+    raw.goodsList,
+  ];
+  if (raw.result && typeof raw.result === "object") {
+    arrCandidates.push(
+      raw.result.items,
+      raw.result.rows,
+      raw.result.combos,
+      raw.result.list,
+      raw.result.products,
+    );
+  }
+  if (raw.data && typeof raw.data === "object") {
+    arrCandidates.push(
+      raw.data.items,
+      raw.data.rows,
+      raw.data.combos,
+      raw.data.list,
+      raw.data.products,
+    );
+  }
+  const hasList = arrCandidates.some((v) => Array.isArray(v) && v.length);
   const hasProducts = Array.isArray(raw.products) && raw.products.length;
-  const hasOnlyReply = typeof raw.reply === "string" && !raw.products;
+  const hasOnlyReply =
+    typeof raw.reply === "string" && !raw.products && !hasList;
   if (
     hasProducts ||
+    hasList ||
     raw.success !== undefined ||
     raw.recommendMode !== undefined ||
     hasOnlyReply
@@ -135,18 +166,15 @@ function parseAiResult(raw) {
 }
 
 async function pollResult(taskId) {
-  for (let i = 0; i < 30; i += 1) {
+  while (true) {
     const res = await aiChatAsyncResult(taskId);
     const task = (res && res.data) || {};
     if (task.status === "0") return task.result || {};
     if (task.status === "1") {
-      uni.showToast({ title: task.errorMsg || "AI 推荐失败", icon: "none" });
       throw new Error(task.errorMsg || "AI 推荐失败");
     }
-    await sleep(1500);
+    await sleep(2000);
   }
-  uni.showToast({ title: "AI 推荐超时，请稍后重试", icon: "none" });
-  throw new Error("AI 推荐超时");
 }
 
 function safeClone(value) {
@@ -169,7 +197,6 @@ async function submitForm() {
     (item) => item.requiredFlag === "1" && isEmpty(form[item.itemId]),
   );
   if (missing) {
-    uni.showToast({ title: `请先完成：${missing.question}`, icon: "none" });
     return;
   }
 
@@ -205,11 +232,6 @@ async function submitForm() {
 
   if (!aiResult) {
     submitting.value = false;
-    uni.showToast({
-      title: `①AI结果为空${aiError ? ":" + (aiError.message || String(aiError)) : ""}`,
-      icon: "none",
-      duration: 2500,
-    });
     return;
   }
 
@@ -219,16 +241,7 @@ async function submitForm() {
   } catch (error) {
     aiError = aiError || error;
   }
-  const parsedCount =
-    (recommendation &&
-      recommendation.products &&
-      recommendation.products.length) ||
-    0;
-  uni.showToast({
-    title: `②polled=${typeof polledRaw} parsed.products=${parsedCount}`,
-    icon: "none",
-    duration: 2500,
-  });
+
   if (typeof window !== "undefined") {
     try {
       // eslint-disable-next-line no-console
@@ -294,22 +307,6 @@ async function submitForm() {
     // ignore
   }
 
-  const finalProducts =
-    (store.recommendation &&
-      store.recommendation.products &&
-      store.recommendation.products.length) ||
-    0;
-  const recObjProducts =
-    (recommendationPlain &&
-      recommendationPlain.products &&
-      recommendationPlain.products.length) ||
-    0;
-  uni.showToast({
-    title: `④store内存=${finalProducts} recPlain=${recObjProducts}`,
-    icon: "none",
-    duration: 2500,
-  });
-
   try {
     store.saveAnswers(safeClone(form));
   } catch (error) {
@@ -329,10 +326,6 @@ async function submitForm() {
   }
   uni.navigateTo({
     url: "/pages/recommend/result" + query,
-    fail(err) {
-      const msg = (err && err.errMsg) || "跳转结果页失败";
-      uni.showToast({ title: msg, icon: "none" });
-    },
   });
 }
 </script>

@@ -40,6 +40,10 @@ function normalizeObject(obj) {
   if (!obj || typeof obj !== "object" || Array.isArray(obj)) return null;
   if (
     Array.isArray(obj.products) ||
+    Array.isArray(obj.items) ||
+    Array.isArray(obj.rows) ||
+    Array.isArray(obj.combos) ||
+    Array.isArray(obj.list) ||
     typeof obj.reply === "string" ||
     obj.success !== undefined
   ) {
@@ -56,7 +60,10 @@ function normalizeObject(obj) {
   if (obj.data && typeof obj.data === "object") {
     return normalizeObject(obj.data);
   }
-  return null;
+  if (obj.result && typeof obj.result === "object") {
+    return normalizeObject(obj.result);
+  }
+  return obj;
 }
 
 function parseMaybeString(raw) {
@@ -77,8 +84,7 @@ function pickBestRecommendation(queryData) {
   if (queryData) {
     const parsed = parseMaybeString(queryData);
     pushTrace("1_query", parsed);
-    if (parsed && Array.isArray(parsed.products) && parsed.products.length)
-      return parsed;
+    if (parsed && extractList(parsed).length) return parsed;
   }
 
   // 2. window 全局单例（question.vue 写入）
@@ -91,12 +97,7 @@ function pickBestRecommendation(queryData) {
     // ignore
   }
   pushTrace("2_window", windowObj);
-  if (
-    windowObj &&
-    Array.isArray(windowObj.products) &&
-    windowObj.products.length
-  )
-    return windowObj;
+  if (windowObj && extractList(windowObj).length) return windowObj;
 
   // 3. getApp().globalData
   let globalObj = null;
@@ -111,12 +112,7 @@ function pickBestRecommendation(queryData) {
     // ignore
   }
   pushTrace("3_globalData", globalObj);
-  if (
-    globalObj &&
-    Array.isArray(globalObj.products) &&
-    globalObj.products.length
-  )
-    return globalObj;
+  if (globalObj && extractList(globalObj).length) return globalObj;
 
   // 4. 独立 storage key（question.vue 写入）
   let storageObj = null;
@@ -127,18 +123,12 @@ function pickBestRecommendation(queryData) {
     // ignore
   }
   pushTrace("4_storagePending", storageObj);
-  if (
-    storageObj &&
-    Array.isArray(storageObj.products) &&
-    storageObj.products.length
-  )
-    return storageObj;
+  if (storageObj && extractList(storageObj).length) return storageObj;
 
   // 5. store 内存（持久化 read 出来的 recommendation）
   const storeObj = normalizeObject(store.recommendation);
   pushTrace("5_storeMemory", storeObj);
-  if (storeObj && Array.isArray(storeObj.products) && storeObj.products.length)
-    return storeObj;
+  if (storeObj && extractList(storeObj).length) return storeObj;
 
   // 最后兜底：把 store.recommendation 原样返回当回复文本用
   return (
@@ -387,6 +377,119 @@ onMounted(() => {
   }
 });
 
+function normalizeProduct(item) {
+  if (!item || typeof item !== "object") return null;
+  const nameCands = [
+    "productName",
+    "name",
+    "title",
+    "itemName",
+    "comboName",
+    "goodsName",
+    "skuName",
+    "subTitle",
+    "subtitle",
+  ];
+  const coverCands = [
+    "coverImage",
+    "cover",
+    "itemCover",
+    "image",
+    "pic",
+    "productImage",
+    "itemImage",
+    "img",
+    "picture",
+    "picUrl",
+    "imageUrl",
+    "goodsImage",
+    "thumbnail",
+    "thumb",
+  ];
+  const descCands = [
+    "reason",
+    "description",
+    "sellingPoints",
+    "features",
+    "subtitle",
+    "subTitle",
+    "brief",
+    "intro",
+    "introduction",
+  ];
+  const out = {};
+  for (const k of Object.keys(item)) {
+    out[k] = item[k];
+  }
+  if (!out.productName) {
+    for (const k of nameCands) {
+      if (typeof item[k] === "string" && item[k]) {
+        out.productName = item[k];
+        break;
+      }
+    }
+    if (!out.productName) out.productName = "商品";
+  }
+  if (!out.coverImage) {
+    for (const k of coverCands) {
+      if (typeof item[k] === "string" && item[k]) {
+        out.coverImage = item[k];
+        break;
+      }
+    }
+  }
+  if (!out.reason && !out.description) {
+    for (const k of descCands) {
+      if (typeof item[k] === "string" && item[k]) {
+        out.description = item[k];
+        break;
+      }
+    }
+  }
+  if (out.productId === undefined && item.id !== undefined) {
+    out.productId = item.id;
+  }
+  return out;
+}
+
+function extractList(rec) {
+  if (!rec || typeof rec !== "object") return [];
+  const candidates = [
+    rec.products,
+    rec.items,
+    rec.rows,
+    rec.combos,
+    rec.list,
+    rec.comboList,
+    rec.productList,
+    rec.itemList,
+    rec.goodsList,
+    rec.result && rec.result.products,
+    rec.result && rec.result.items,
+    rec.result && rec.result.rows,
+    rec.data && rec.data.products,
+    rec.data && rec.data.items,
+    rec.data && rec.data.rows,
+    rec.data && Array.isArray(rec.data) ? rec.data : null,
+  ];
+  let arr = candidates.find((v) => Array.isArray(v) && v.length);
+  if (!arr && rec.content && typeof rec.content === "object") {
+    arr = [
+      rec.content.products,
+      rec.content.items,
+      rec.content.rows,
+      rec.content,
+    ].find((v) => Array.isArray(v) && v.length);
+  }
+  if (!Array.isArray(arr) || !arr.length) return [];
+  const list = [];
+  for (const it of arr) {
+    const p = normalizeProduct(it);
+    if (p) list.push(p);
+  }
+  return list;
+}
+
 const recommendation = computed(
   () => override.value || store.recommendation || null,
 );
@@ -394,10 +497,7 @@ const reply = computed(() => {
   const v = recommendation.value && recommendation.value.reply;
   return typeof v === "string" ? v : "";
 });
-const products = computed(() => {
-  const arr = recommendation.value && recommendation.value.products;
-  return Array.isArray(arr) ? arr : [];
-});
+const products = computed(() => extractList(recommendation.value));
 const recommendMode = computed(() => {
   const v = recommendation.value && recommendation.value.recommendMode;
   return typeof v === "string" ? v : "";
@@ -481,14 +581,20 @@ const productDesc = (product, idx) => {
 const productCover = (product, idx) => {
   if (!product) return "";
   const c = [
+    product.coverImage,
     product.cover,
+    product.itemCover,
     product.image,
-    product.productImage,
     product.pic,
+    product.productImage,
+    product.itemImage,
     product.img,
     product.picture,
     product.picUrl,
     product.imageUrl,
+    product.goodsImage,
+    product.thumbnail,
+    product.thumb,
   ].find((x) => typeof x === "string" && x);
   if (c) return c;
   return idx % 2 === 0

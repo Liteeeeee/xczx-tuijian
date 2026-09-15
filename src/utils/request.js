@@ -108,15 +108,6 @@ export default function request(options = {}) {
         // 登录态失效：清除本地 token + 重置登录态 + 跳登录页
         if (code === 401) {
           clearToken();
-          try {
-            uni.showToast({
-              title: '登录态已失效，请重新登录',
-              icon: 'none',
-              duration: 1800,
-            });
-          } catch (ignore) {
-            // ignore
-          }
           setTimeout(() => {
             const pages = typeof getCurrentPages === 'function' ? getCurrentPages() : [];
             const cur = pages && pages.length ? pages[pages.length - 1] : null;
@@ -141,15 +132,9 @@ export default function request(options = {}) {
         }
 
         const message = body.msg || '请求失败';
-        if (showError) {
-          uni.showToast({ title: message, icon: 'none' });
-        }
         reject(new Error(message));
       },
       fail(err) {
-        if (showError) {
-          uni.showToast({ title: '网络异常，请稍后重试', icon: 'none' });
-        }
         reject(err);
       },
     });

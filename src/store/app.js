@@ -60,18 +60,56 @@ function parseRecommendationCandidate(raw) {
     }
   }
   if (typeof candidate === 'object' && candidate && !Array.isArray(candidate)) {
-    if (typeof candidate.text === 'string' && (candidate.success === undefined || candidate.products === undefined)) {
+    if (typeof candidate.text === 'string' && (candidate.success === undefined || candidate.products === undefined || !Array.isArray(candidate.products) || candidate.products.length === 0)) {
       try {
         const inner = JSON.parse(candidate.text);
-        if (inner && typeof inner === 'object') return inner;
+        if (inner && typeof inner === 'object') candidate = inner;
       } catch (ignore) {
         // ignore
       }
     }
-    if (typeof candidate.data === 'object' && candidate.data && (Array.isArray(candidate.data.products) || typeof candidate.data.reply === 'string')) {
-      return candidate.data;
+    if (typeof candidate.data === 'object' && candidate.data && !Array.isArray(candidate.data)) {
+      const inner = parseRecommendationCandidate(candidate.data);
+      if (inner && (Array.isArray(inner.products) || typeof inner.reply === 'string' || inner.success !== undefined)) {
+        candidate = inner;
+      }
     }
-    return candidate;
+    if (typeof candidate.result === 'object' && candidate.result && !Array.isArray(candidate.result)) {
+      const inner = parseRecommendationCandidate(candidate.result);
+      if (inner && (Array.isArray(inner.products) || typeof inner.reply === 'string' || inner.success !== undefined)) {
+        candidate = inner;
+      }
+    }
+    if (!Array.isArray(candidate.products)) {
+      const listCandidates = [
+        candidate.items,
+        candidate.rows,
+        candidate.combos,
+        candidate.list,
+        candidate.productList,
+        candidate.itemList,
+        candidate.comboList,
+        candidate.goodsList,
+        candidate.result && typeof candidate.result === 'object' && candidate.result.items,
+        candidate.result && typeof candidate.result === 'object' && candidate.result.rows,
+        candidate.result && typeof candidate.result === 'object' && candidate.result.products,
+        candidate.data && typeof candidate.data === 'object' && candidate.data.items,
+        candidate.data && typeof candidate.data === 'object' && candidate.data.rows,
+        candidate.data && typeof candidate.data === 'object' && candidate.data.products,
+      ];
+      const arr = listCandidates.find((v) => Array.isArray(v) && v.length);
+      if (Array.isArray(arr) && arr.length) {
+        candidate.products = arr.map((it) => (it && typeof it === 'object' ? it : null)).filter(Boolean);
+      }
+    }
+    if (
+      Array.isArray(candidate.products) ||
+      typeof candidate.reply === 'string' ||
+      candidate.success !== undefined ||
+      candidate.recommendMode !== undefined
+    ) {
+      return candidate;
+    }
   }
   return null;
 }
