@@ -1,6 +1,7 @@
 <script setup>
 import { reactive, ref, computed, onMounted } from "vue";
 import { useAppStore } from "@/store/app";
+import { useRecommendStore } from "@/store/recommend";
 import {
   getAiQaTemplateDefault,
   aiChatAsync,
@@ -8,6 +9,7 @@ import {
 } from "@/utils/api";
 
 const store = useAppStore();
+const recommendStore = useRecommendStore();
 
 const loading = ref(true);
 const submitting = ref(false);
@@ -280,32 +282,9 @@ async function submitForm() {
     }
   })();
 
-  try {
-    if (typeof getApp === "function") {
-      const app = getApp();
-      if (app && typeof app === "object") {
-        app.globalData = app.globalData || {};
-        app.globalData.pendingRecommendation = recommendationPlain;
-      }
-    }
-  } catch (error) {
-    // ignore
-  }
-  try {
-    if (typeof window !== "undefined") {
-      window.__XZZX_RECOMMENDATION__ = recommendationPlain;
-    }
-  } catch (error) {
-    // ignore
-  }
-  try {
-    uni.setStorageSync(
-      "xczx-tuijian-pending-recommendation",
-      recommendationPlain ? JSON.stringify(recommendationPlain) : "",
-    );
-  } catch (error) {
-    // ignore
-  }
+  // 1. 将推荐结果存入纯内存的 Pinia Store
+  // 替代旧版的 localStorage / globalData / window 方案，避免跨会话脏数据
+  recommendStore.setRecommendation(recommendationPlain);
 
   try {
     store.saveAnswers(safeClone(form));

@@ -24,6 +24,7 @@
     {
       "path": "pages/recommend/history",
       "style": {
+        "navigationStyle": "custom",
         "navigationBarTitleText": "推荐历史"
       }
     },

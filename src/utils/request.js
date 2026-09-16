@@ -141,8 +141,28 @@ export default function request(options = {}) {
           return;
         }
 
+        // 兼容若依（芋道）C 端新路径：code === 0 即为成功
+        //   例如 promotion/member/ai 等模块，成功标准码是 0
+        if (code === 0 || code === '0' || code === '200') {
+          resolve(body);
+          return;
+        }
+
         const message = body.msg || '请求失败';
-        reject(new Error(message));
+        const err = new Error(message);
+        if (typeof body === 'object' && body && !Array.isArray(body)) {
+          try {
+            Object.assign(err, {
+              code: body.code,
+              bizMsg: body.msg,
+              body,
+              statusCode: res.statusCode,
+            });
+          } catch (ignore) {
+            /* 兼容不可扩展 Error 环境 */
+          }
+        }
+        reject(err);
       },
       fail(err) {
         reject(err);

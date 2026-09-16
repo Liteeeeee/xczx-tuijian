@@ -2,11 +2,14 @@
 import { computed, ref, onMounted } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import { useAppStore } from "@/store/app";
+import { useRecommendStore } from "@/store/recommend";
 import { getAiChatLog } from "@/utils/api";
 
 const store = useAppStore();
+const recommendStore = useRecommendStore();
 
 const override = ref(null);
+const urlTitle = ref("");
 const trace = ref([]);
 const loadingSession = ref(false);
 
@@ -36,6 +39,73 @@ function pushTrace(tag, payload) {
   }
 }
 
+function stripMarkdownCode(raw) {
+  if (typeof raw !== "string") return raw;
+  let s = raw.trim();
+  const triple = s.match(/^```(?:json)?\s*([\s\S]*?)```$/i);
+  if (triple) s = triple[1].trim();
+  const fence = s.match(/^`{1,2}(?:json)?\s*([\s\S]*?)`{1,2}$/i);
+  if (fence) s = fence[1].trim();
+  const first = s.indexOf("{");
+  const last = s.lastIndexOf("}");
+  if (first !== -1 && last !== -1 && last > first) {
+    s = s.slice(first, last + 1);
+  }
+  return s;
+}
+
+function normalizeAiPayload(raw) {
+  if (!raw) return null;
+  if (typeof raw === "string") return raw;
+  if (Array.isArray(raw)) return raw[0];
+  if (typeof raw !== "object") return null;
+  const arrCandidates = [
+    raw.items,
+    raw.rows,
+    raw.combos,
+    raw.list,
+    raw.productList,
+    raw.itemList,
+    raw.comboList,
+    raw.goodsList,
+  ];
+  if (raw.result && typeof raw.result === "object") {
+    arrCandidates.push(
+      raw.result.items,
+      raw.result.rows,
+      raw.result.combos,
+      raw.result.list,
+      raw.result.products,
+    );
+  }
+  if (raw.data && typeof raw.data === "object") {
+    arrCandidates.push(
+      raw.data.items,
+      raw.data.rows,
+      raw.data.combos,
+      raw.data.list,
+      raw.data.products,
+    );
+  }
+  const hasList = arrCandidates.some((v) => Array.isArray(v) && v.length);
+  const hasProducts = Array.isArray(raw.products) && raw.products.length;
+  const hasOnlyReply =
+    typeof raw.reply === "string" && !raw.products && !hasList;
+  if (
+    hasProducts ||
+    hasList ||
+    raw.success !== undefined ||
+    raw.recommendMode !== undefined ||
+    hasOnlyReply
+  ) {
+    return raw;
+  }
+  if (typeof raw.text === "string" && raw.text.length > 0) {
+    return raw.text;
+  }
+  return raw;
+}
+
 function normalizeObject(obj) {
   if (!obj || typeof obj !== "object" || Array.isArray(obj)) return null;
   if (
@@ -44,24 +114,39 @@ function normalizeObject(obj) {
     Array.isArray(obj.rows) ||
     Array.isArray(obj.combos) ||
     Array.isArray(obj.list) ||
+    Array.isArray(obj.productList) ||
+    Array.isArray(obj.itemList) ||
+    Array.isArray(obj.comboList) ||
+    Array.isArray(obj.goodsList) ||
     typeof obj.reply === "string" ||
-    obj.success !== undefined
+    obj.success !== undefined ||
+    obj.recommendMode !== undefined
   ) {
     return obj;
   }
   if (typeof obj.text === "string") {
     try {
-      const inner = JSON.parse(obj.text);
-      if (inner && typeof inner === "object") return inner;
+      const inner = JSON.parse(stripMarkdownCode(obj.text));
+      if (inner && typeof inner === "object") {
+        const normalized = normalizeAiPayload(inner);
+        if (normalized && typeof normalized === "object") return normalized;
+        return inner;
+      }
     } catch (ignore) {
       // ignore
     }
   }
-  if (obj.data && typeof obj.data === "object") {
-    return normalizeObject(obj.data);
+  if (obj.response && typeof obj.response === "object") {
+    const inner = normalizeObject(obj.response);
+    if (inner) return inner;
   }
   if (obj.result && typeof obj.result === "object") {
-    return normalizeObject(obj.result);
+    const inner = normalizeObject(obj.result);
+    if (inner) return inner;
+  }
+  if (obj.data && typeof obj.data === "object") {
+    const inner = normalizeObject(obj.data);
+    if (inner) return inner;
   }
   return obj;
 }
@@ -69,196 +154,52 @@ function normalizeObject(obj) {
 function parseMaybeString(raw) {
   if (!raw) return null;
   if (typeof raw === "string") {
+    const cleaned = stripMarkdownCode(raw);
     try {
-      const p = JSON.parse(raw);
-      return normalizeObject(p);
+      const p = JSON.parse(cleaned);
+      const normalized = normalizeAiPayload(p);
+      return normalizeObject(normalized) || normalizeObject(p);
     } catch (ignore) {
-      return null;
+      return { reply: cleaned || raw, products: [] };
     }
   }
-  return normalizeObject(raw);
+  const normalized = normalizeAiPayload(raw);
+  if (typeof normalized === "string") {
+    const cleaned = stripMarkdownCode(normalized);
+    try {
+      const p = JSON.parse(cleaned);
+      return normalizeObject(p) || { reply: cleaned, products: [] };
+    } catch (ignore2) {
+      return { reply: cleaned || normalized, products: [] };
+    }
+  }
+  return normalizeObject(normalized) || normalizeObject(raw);
 }
 
 function pickBestRecommendation(queryData) {
-  // 1. URL query 参数（来自 question.vue navigateTo 拼的 data）
+  // 1. URL query 参数（来自 question.vue navigateTo 拼的 data）——最高优先级
   if (queryData) {
     const parsed = parseMaybeString(queryData);
     pushTrace("1_query", parsed);
-    if (parsed && extractList(parsed).length) return parsed;
-  }
-
-  // 2. window 全局单例（question.vue 写入）
-  let windowObj = null;
-  try {
-    if (typeof window !== "undefined" && window.__XZZX_RECOMMENDATION__) {
-      windowObj = normalizeObject(window.__XZZX_RECOMMENDATION__);
-    }
-  } catch (ignore) {
-    // ignore
-  }
-  pushTrace("2_window", windowObj);
-  if (windowObj && extractList(windowObj).length) return windowObj;
-
-  // 3. getApp().globalData
-  let globalObj = null;
-  try {
-    if (typeof getApp === "function") {
-      const app = getApp();
-      if (app && app.globalData && app.globalData.pendingRecommendation) {
-        globalObj = normalizeObject(app.globalData.pendingRecommendation);
-      }
-    }
-  } catch (ignore) {
-    // ignore
-  }
-  pushTrace("3_globalData", globalObj);
-  if (globalObj && extractList(globalObj).length) return globalObj;
-
-  // 4. 独立 storage key（question.vue 写入）
-  let storageObj = null;
-  try {
-    const s = uni.getStorageSync("xczx-tuijian-pending-recommendation");
-    if (s && typeof s === "string") storageObj = parseMaybeString(s);
-  } catch (ignore) {
-    // ignore
-  }
-  pushTrace("4_storagePending", storageObj);
-  if (storageObj && extractList(storageObj).length) return storageObj;
-
-  // 5. store 内存（持久化 read 出来的 recommendation）
-  const storeObj = normalizeObject(store.recommendation);
-  pushTrace("5_storeMemory", storeObj);
-  if (storeObj && extractList(storeObj).length) return storeObj;
-
-  // 最后兜底：把 store.recommendation 原样返回当回复文本用
-  return (
-    storeObj ||
-    storageObj ||
-    globalObj ||
-    windowObj ||
-    parseMaybeString(queryData) ||
-    null
-  );
-}
-
-function isAssistantMsg(m) {
-  if (!m || typeof m !== "object") return false;
-  const raw =
-    (typeof m.role === "string" ? m.role : "") +
-    "|" +
-    (typeof m.messageType === "string" ? m.messageType : "") +
-    "|" +
-    (typeof m.sender === "string" ? m.sender : "") +
-    "|" +
-    (typeof m.senderRole === "string" ? m.senderRole : "") +
-    "|" +
-    (typeof m.type === "string" ? m.type : "");
-  return /assistant|ai|bot|robot|模型|回复|回答|智能体/i.test(raw);
-}
-
-function pickStringField(m, candidates) {
-  for (const k of candidates) {
-    const v = m[k];
-    if (typeof v === "string" && v) return v;
-  }
-  return "";
-}
-
-function extractLastAiReplyText(data) {
-  if (!data || typeof data !== "object") return "";
-  const candidates = [];
-  const keysToScan = [
-    "messages",
-    "messageList",
-    "chatMessages",
-    "logs",
-    "logList",
-    "records",
-    "chatRecords",
-    "list",
-    "items",
-    "conversation",
-    "dialogs",
-    "history",
-    "rows",
-    "data",
-  ];
-  function walk(node) {
-    if (!node || typeof node !== "object") return;
-    if (Array.isArray(node)) {
-      if (
-        node.some(
-          (n) =>
-            n &&
-            typeof n === "object" &&
-            (n.role || n.sender || n.messageType || isAssistantMsg(n)),
-        )
-      ) {
-        candidates.push(...node.filter((n) => n && typeof n === "object"));
-      }
-      node.forEach(walk);
-      return;
-    }
-    for (const k of keysToScan) {
-      if (Array.isArray(node[k])) {
-        node[k].forEach(walk);
-      }
-    }
-    for (const k of Object.keys(node)) {
-      const v = node[k];
-      if (!v) continue;
-      if (typeof v === "object") walk(v);
+    if (parsed && extractList(parsed).length) {
+      return parsed;
     }
   }
-  walk(data);
-  const assistants = candidates.filter((m) => isAssistantMsg(m));
-  if (!assistants.length) {
-    const arr = Object.values(data).find((v) => Array.isArray(v));
-    if (Array.isArray(arr)) {
-      for (let i = arr.length - 1; i >= 0; i -= 1) {
-        const e = arr[i];
-        if (e && typeof e === "object") {
-          const txt = pickStringField(e, [
-            "text",
-            "content",
-            "reply",
-            "message",
-            "answer",
-            "result",
-            "response",
-          ]);
-          if (txt) return txt;
-        }
-      }
+
+  // 2. 纯内存 Pinia Store（推荐方案，question.vue 写入）
+  const memRec = recommendStore.currentRecommendation;
+  if (memRec) {
+    const memObj = normalizeObject(memRec);
+    pushTrace("2_piniaMemory", memObj);
+    // 即用即毁，绝不产生跨会话脏数据
+    recommendStore.clearRecommendation();
+    if (memObj && extractList(memObj).length) {
+      return memObj;
     }
-    return "";
   }
-  const last = assistants[assistants.length - 1];
-  const text = pickStringField(last, [
-    "text",
-    "content",
-    "reply",
-    "message",
-    "answer",
-    "result",
-    "response",
-    "output",
-  ]);
-  if (text) return text;
-  if (last.result && typeof last.result === "string") return last.result;
-  if (last.result && typeof last.result === "object") {
-    const inner = pickStringField(last.result, [
-      "text",
-      "content",
-      "reply",
-      "message",
-      "answer",
-      "result",
-      "response",
-    ]);
-    if (inner) return inner;
-  }
-  return "";
+
+  // 兜底：把 queryData 解析当回复文本用
+  return parseMaybeString(queryData) || null;
 }
 
 async function loadFromSessionId(sessionId) {
@@ -266,62 +207,86 @@ async function loadFromSessionId(sessionId) {
   loadingSession.value = true;
   try {
     const res = await getAiChatLog(sessionId);
-    const payload =
-      (res && (res.data || res.rows || res.result || res)) || null;
-    const text = extractLastAiReplyText(payload);
-    pushTrace("6_sessionLog", text || null);
-    if (!text) return null;
-    let obj = parseMaybeString(text);
-    if (!obj) {
-      obj = { reply: text, products: [] };
+    const payload = res && res.data ? res.data : null;
+
+    if (Array.isArray(payload) && payload.length > 0) {
+      // 遍历所有返回的消息，优先寻找有 response 并且解析后有 products 的条目
+      for (const item of payload) {
+        const userQuestion = item.prompt || "";
+        let responseObj = null;
+
+        if (item.response) {
+          if (typeof item.response === "string") {
+            try {
+              responseObj = JSON.parse(item.response);
+            } catch (ignore) {}
+          } else if (typeof item.response === "object") {
+            responseObj = item.response;
+          }
+        }
+
+        // 如果找到有效的推荐对象，直接返回
+        if (responseObj && Array.isArray(responseObj.products)) {
+          pushTrace("7_sessionParsed_exact", responseObj);
+          return {
+            question: userQuestion,
+            reply: responseObj.reply || "",
+            products: responseObj.products,
+            recommendMode: responseObj.recommendMode || "",
+          };
+        }
+      }
+
+      // 如果循环完没找到有 products 的，返回第一条数据的文本作为兜底
+      const firstItem = payload[0];
+      return {
+        question: firstItem.prompt || "",
+        reply: firstItem.response || "该历史会话暂无推荐内容",
+        products: [],
+      };
     }
-    if (
-      obj &&
-      typeof obj.text === "string" &&
-      (!Array.isArray(obj.products) || obj.products.length === 0)
-    ) {
-      const inner = parseMaybeString(obj.text);
-      if (inner) obj = inner;
-    }
-    if (
-      typeof obj.reply !== "string" &&
-      typeof text === "string" &&
-      !Array.isArray(obj.products)
-    ) {
-      obj.reply = text;
-    }
-    pushTrace("7_sessionParsed", obj);
-    return obj;
+
+    return { reply: "该历史会话暂无推荐内容", products: [] };
   } catch (error) {
-    pushTrace("6_sessionErr", {
-      reply: String((error && (error.msg || error.message)) || error),
-    });
-    return null;
+    const errText = String((error && (error.msg || error.message)) || error);
+    pushTrace("6_sessionErr", { reply: errText });
+    return { reply: errText || "加载历史会话失败", products: [] };
   } finally {
     loadingSession.value = false;
   }
 }
 
 onLoad(async (options) => {
+  if (options && options.title) {
+    urlTitle.value = decodeURIComponent(options.title);
+  }
   const historyId =
     options && options.historyId ? decodeURIComponent(options.historyId) : "";
-  if (historyId && typeof store.getHistoryById === "function") {
-    const historyItem = store.getHistoryById(historyId);
-    if (
-      historyItem &&
-      (Array.isArray(historyItem.products) ||
-        typeof historyItem.reply === "string")
-    ) {
-      override.value = historyItem;
-      if (historyId) {
-        try {
-          uni.setNavigationBarTitle({ title: "历史推荐详情" });
-        } catch (ignore) {
-          // ignore
+  if (historyId) {
+    try {
+      uni.setNavigationBarTitle({ title: "历史推荐详情" });
+    } catch (ignore) {
+      // ignore
+    }
+    if (typeof store.getHistoryById === "function") {
+      const historyItem = store.getHistoryById(historyId);
+      if (historyItem && typeof historyItem === "object") {
+        const hasContent =
+          (Array.isArray(historyItem.products) &&
+            historyItem.products.length > 0) ||
+          (typeof historyItem.reply === "string" && historyItem.reply) ||
+          (typeof historyItem.text === "string" && historyItem.text);
+        if (hasContent) {
+          override.value = historyItem;
+          return;
         }
       }
-      return;
     }
+    override.value = {
+      reply: "暂无该历史会话的推荐内容，请返回重新选择。",
+      products: [],
+    };
+    return;
   }
 
   const sessionId =
@@ -333,14 +298,25 @@ onLoad(async (options) => {
       // ignore
     }
     const sessionObj = await loadFromSessionId(sessionId);
-    if (
-      sessionObj &&
-      (Array.isArray(sessionObj.products) ||
-        typeof sessionObj.reply === "string")
-    ) {
-      override.value = sessionObj;
-      return;
+    if (sessionObj && typeof sessionObj === "object") {
+      const hasContent =
+        Array.isArray(sessionObj.products) && sessionObj.products.length > 0
+          ? true
+          : typeof sessionObj.reply === "string" && sessionObj.reply
+            ? true
+            : typeof sessionObj.text === "string" && sessionObj.text
+              ? true
+              : false;
+      if (hasContent) {
+        override.value = sessionObj;
+        return;
+      }
     }
+    override.value = sessionObj || {
+      reply: "暂无该历史会话的推荐内容，请返回重新选择。",
+      products: [],
+    };
+    return;
   }
 
   let queryData = null;
@@ -511,6 +487,7 @@ const sessionTitle = computed(() => {
 });
 const userQuestion = computed(() => {
   if (sessionTitle.value) return sessionTitle.value;
+  if (urlTitle.value) return urlTitle.value;
   const s =
     typeof store.lastQuestionText === "string" ? store.lastQuestionText : "";
   if (s) return s;

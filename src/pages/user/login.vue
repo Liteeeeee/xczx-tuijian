@@ -1,13 +1,13 @@
 <script setup>
-import { reactive, ref, onUnmounted } from 'vue';
-import { useAppStore } from '@/store/app';
-import { sendSmsCode } from '@/utils/api';
+import { reactive, ref, onUnmounted } from "vue";
+import { useAppStore } from "@/store/app";
+import { sendSmsCode } from "@/utils/api";
 
 const store = useAppStore();
 
 const form = reactive({
   phone: store.user.phone,
-  code: '',
+  code: "",
 });
 
 const sending = ref(false);
@@ -17,8 +17,8 @@ let timer = null;
 function validatePhone() {
   if (!/^1\d{10}$/.test(form.phone)) {
     uni.showToast({
-      title: '请输入正确手机号',
-      icon: 'none',
+      title: "请输入正确手机号",
+      icon: "none",
     });
     return false;
   }
@@ -33,8 +33,8 @@ async function getCode() {
   try {
     await sendSmsCode(form.phone);
     uni.showToast({
-      title: '验证码已发送',
-      icon: 'none',
+      title: "验证码已发送",
+      icon: "none",
     });
     startCountdown();
   } catch (error) {
@@ -60,32 +60,44 @@ async function login() {
 
   if (!form.code || form.code.length < 4) {
     uni.showToast({
-      title: '请输入验证码',
-      icon: 'none',
+      title: "请输入验证码",
+      icon: "none",
     });
     return;
   }
-
+  debugger;
   try {
     await store.login(form.phone, form.code);
     uni.showToast({
-      title: '登录成功',
-      icon: 'success',
+      title: "登录成功",
+      icon: "success",
     });
     setTimeout(() => {
       uni.switchTab({
-        url: '/pages/index/index',
+        url: "/pages/index/index",
       });
     }, 500);
   } catch (error) {
     const code =
-      (error && typeof error === 'object' && (error.code ?? error.statusCode ?? error.status)) ??
+      (error &&
+        typeof error === "object" &&
+        (error.code ?? error.statusCode ?? error.status)) ??
       null;
-    const msg = (error && typeof error === 'object' && String(error.msg || error.message || '')) || '';
-    if (code === 500 || /\b500\b/.test(msg)) {
+    const msg =
+      (error &&
+        typeof error === "object" &&
+        String(error.bizMsg || error.msg || error.message || "")) ||
+      "";
+    const isCode500 = code === 500;
+    const isSmsWrong =
+      isCode500 ||
+      /短信验证码错误|短信验证码已过期|验证码不正确|验证码错误|验证码已过期/.test(
+        msg,
+      );
+    if (isSmsWrong) {
       uni.showToast({
-        title: '验证码不正确',
-        icon: 'none',
+        title: "验证码不正确",
+        icon: "none",
       });
     }
   }
@@ -106,17 +118,40 @@ onUnmounted(() => {
       <view class="login-subtitle">注册 / 登录</view>
 
       <view class="field-label">手机号码</view>
-      <input v-model="form.phone" class="field-input" type="number" maxlength="11" placeholder="请输入手机号" />
+      <input
+        v-model="form.phone"
+        class="field-input"
+        type="number"
+        maxlength="11"
+        placeholder="请输入手机号"
+      />
 
       <view class="field-label">验证码</view>
       <view class="code-row">
-        <input v-model="form.code" class="field-input code-input" maxlength="6" placeholder="请输入验证码" />
-        <view class="code-btn" :class="{ disabled: countdown > 0 }" @tap="getCode">
-          {{ countdown > 0 ? `${countdown}s后重发` : (sending ? '发送中…' : '获取验证码') }}
+        <input
+          v-model="form.code"
+          class="field-input code-input"
+          maxlength="6"
+          placeholder="请输入验证码"
+        />
+        <view
+          class="code-btn"
+          :class="{ disabled: countdown > 0 }"
+          @tap="getCode"
+        >
+          {{
+            countdown > 0
+              ? `${countdown}s后重发`
+              : sending
+                ? "发送中…"
+                : "获取验证码"
+          }}
         </view>
       </view>
 
-      <view class="agreement-hint">点击注册或登录即表示您同意《用户服务协议》</view>
+      <view class="agreement-hint"
+        >点击注册或登录即表示您同意《用户服务协议》</view
+      >
       <view class="primary-btn login-btn" @tap="login">注册 / 登录</view>
     </view>
   </view>

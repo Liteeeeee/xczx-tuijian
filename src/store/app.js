@@ -3,6 +3,12 @@ import { smsLogin, getUserInfo } from '@/utils/api';
 import { setToken, clearToken } from '@/utils/request';
 
 const STORAGE_KEY = 'xczx-tuijian-app-state';
+// history 离线缓存 TTL 7 天（无网降级，有网以服务端 /ai/sessions 为准）
+const HISTORY_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+// recommendation 离线缓存 TTL 5 分钟（只在本次打开没生成新推荐时临时兜底，不长期保存）
+const RECOMMENDATION_TTL_MS = 5 * 60 * 1000;
+// lastAnswers 表单草稿 TTL 1 天
+const LAST_ANSWERS_TTL_MS = 24 * 60 * 60 * 1000;
 
 const defaultUser = {
   phone: '',
@@ -165,15 +171,45 @@ function loadState() {
         history: [],
       };
     }
+    const meta = cached.__meta && typeof cached.__meta === 'object' ? cached.__meta : {};
+    const now = Date.now();
     const user = cached.user && typeof cached.user === 'object' ? cached.user : {};
-    const lastAnswers = cached.lastAnswers && typeof cached.lastAnswers === 'object' && !Array.isArray(cached.lastAnswers)
-      ? cached.lastAnswers
-      : {};
+    const lastAnswersSavedAt =
+      typeof meta.lastAnswersSavedAt === 'number' ? meta.lastAnswersSavedAt : 0;
+    const lastAnswers =
+      cached.lastAnswers &&
+      typeof cached.lastAnswers === 'object' &&
+      !Array.isArray(cached.lastAnswers) &&
+      (!lastAnswersSavedAt || now - lastAnswersSavedAt <= LAST_ANSWERS_TTL_MS)
+        ? cached.lastAnswers
+        : {};
     const lastQuestionText = typeof cached.lastQuestionText === 'string' ? cached.lastQuestionText : '';
 
-    let recommendation = extractRecommendationFromObject(cached);
+    // recommendation 严格 TTL：过 5 分钟即丢弃，防止跨用户/跨会话脏数据污染
+    let recommendation = null;
+    const recSavedAt =
+      typeof meta.recommendationSavedAt === 'number' ? meta.recommendationSavedAt : 0;
+    if (!recSavedAt || now - recSavedAt <= RECOMMENDATION_TTL_MS) {
+      const extracted = extractRecommendationFromObject(cached);
+      if (extracted && (Array.isArray(extracted.products) || typeof extracted.reply === 'string')) {
+        recommendation = extracted;
+      }
+    }
 
-    let history = Array.isArray(cached.history) ? cached.history.filter((h) => h && typeof h === 'object') : [];
+    // history 严格 TTL：过 7 天即丢弃，防止无网时显示过旧数据
+    let history = [];
+    const histSavedAt =
+      typeof meta.historySavedAt === 'number' ? meta.historySavedAt : 0;
+    if (!histSavedAt || now - histSavedAt <= HISTORY_TTL_MS) {
+      history = Array.isArray(cached.history)
+        ? cached.history.filter(
+            (h) =>
+              h &&
+              typeof h === 'object' &&
+              (typeof h.createTime !== 'number' || now - Number(h.createTime) <= HISTORY_TTL_MS),
+          )
+        : [];
+    }
 
     return {
       loggedIn: Boolean(cached.loggedIn),
@@ -208,7 +244,20 @@ export const useAppStore = defineStore('app', {
   },
   actions: {
     persist() {
+      const now = Date.now();
       const payload = {
+        __meta: {
+          persistedAt: now,
+          recommendationSavedAt:
+            this.recommendation && typeof this.recommendation === 'object' ? now : 0,
+          historySavedAt: Array.isArray(this.history) && this.history.length ? now : 0,
+          lastAnswersSavedAt:
+            this.lastAnswers &&
+            typeof this.lastAnswers === 'object' &&
+            Object.keys(this.lastAnswers).length
+              ? now
+              : 0,
+        },
         loggedIn: this.loggedIn,
         user: toPlain(this.user),
         lastAnswers: toPlain(this.lastAnswers),
@@ -333,6 +382,16 @@ export const useAppStore = defineStore('app', {
       clearToken();
       this.loggedIn = false;
       this.user = { ...defaultUser };
+      this.recommendation = null;
+      this.history = [];
+      this.lastAnswers = {};
+      this.lastQuestionText = '';
+      try {
+        uni.removeStorageSync('xczx-tuijian-pending-recommendation');
+        uni.removeStorageSync('xczx-tuijian-last-question');
+      } catch (ignore) {
+        // ignore
+      }
       this.persist();
     },
     saveProfile(payload) {
