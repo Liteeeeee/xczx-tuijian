@@ -78,7 +78,16 @@ async function login() {
       });
     }, 500);
   } catch (error) {
-    // 错误已在 request 层统一提示
+    const code =
+      (error && typeof error === 'object' && (error.code ?? error.statusCode ?? error.status)) ??
+      null;
+    const msg = (error && typeof error === 'object' && String(error.msg || error.message || '')) || '';
+    if (code === 500 || /\b500\b/.test(msg)) {
+      uni.showToast({
+        title: '验证码不正确',
+        icon: 'none',
+      });
+    }
   }
 }
 
