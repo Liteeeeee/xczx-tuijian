@@ -1,7 +1,9 @@
 <script setup>
 import { ref, onMounted, computed } from "vue";
+import { onShow } from "@dcloudio/uni-app";
 import { getComboList, getBannerList } from "@/utils/api";
 import { useAppStore } from "@/store/app";
+import CustomTabBar from "@/components/custom-tab-bar/custom-tab-bar.vue";
 
 const store = useAppStore();
 
@@ -9,6 +11,12 @@ const loading = ref(false);
 const combos = ref([]);
 const total = ref(0);
 const banners = ref([]);
+
+onShow(() => {
+  uni.hideTabBar({
+    animation: false,
+  });
+});
 
 async function loadBanners() {
   try {
@@ -237,6 +245,7 @@ const userAvatarBg = computed(() => "#BC581C");
 
       <view class="footer-copy"> 仙草甄选（北京）科技有限公司技术支持 </view>
     </view>
+    <custom-tab-bar :current="0" />
   </view>
 </template>
 
@@ -347,7 +356,7 @@ const userAvatarBg = computed(() => "#BC581C");
 
 .page-body {
   flex: 1;
-  padding: 16rpx 32rpx calc(48rpx + env(safe-area-inset-bottom));
+  padding: 16rpx 32rpx calc(140rpx + env(safe-area-inset-bottom)); /* 为自定义 tabbar 预留空间 */
   display: flex;
   flex-direction: column;
   gap: 28rpx;

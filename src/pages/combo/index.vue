@@ -1,12 +1,19 @@
 <script setup>
 import { ref, computed, onMounted } from "vue";
-import { onReachBottom } from "@dcloudio/uni-app";
+import { onReachBottom, onShow } from "@dcloudio/uni-app";
 import { getComboList } from "@/utils/api";
 import { useAppStore } from "@/store/app";
+import CustomTabBar from "@/components/custom-tab-bar/custom-tab-bar.vue";
 
 const store = useAppStore();
 
 const loading = ref(true);
+
+onShow(() => {
+  uni.hideTabBar({
+    animation: false,
+  });
+});
 const loadingMore = ref(false);
 const errorMsg = ref("");
 const pageNum = ref(1);
@@ -253,6 +260,7 @@ function comboProducts(combo) {
     </view>
 
     <view class="footer-copy">仙草甄选（北京）科技有限公司技术支持</view>
+    <custom-tab-bar :current="1" />
   </view>
 </template>
 
@@ -260,7 +268,7 @@ function comboProducts(combo) {
 .combo-page {
   display: flex;
   flex-direction: column;
-  padding-bottom: 48rpx;
+  padding-bottom: 140rpx; /* 为自定义 tabbar 预留空间 */
   background: #fdfbf9;
   min-height: 100vh;
 }

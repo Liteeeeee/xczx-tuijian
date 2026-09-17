@@ -1,7 +1,15 @@
 <script setup>
 import { useAppStore } from '@/store/app';
+import { onShow } from "@dcloudio/uni-app";
+import CustomTabBar from "@/components/custom-tab-bar/custom-tab-bar.vue";
 
 const store = useAppStore();
+
+onShow(() => {
+  uni.hideTabBar({
+    animation: false
+  });
+});
 
 const menus = [
   { title: '历史记录', url: '/pages/recommend/history' },
@@ -55,6 +63,8 @@ function logout() {
 
     <view v-if="store.loggedIn" class="ghost-btn" @tap="logout">退出账号</view>
     <view v-else class="primary-btn" @tap="goLogin">注册 / 登录</view>
+    
+    <custom-tab-bar :current="2" />
   </view>
 </template>
 
@@ -63,6 +73,7 @@ function logout() {
   display: flex;
   flex-direction: column;
   gap: 24rpx;
+  padding-bottom: 140rpx; /* 为自定义 tabbar 预留空间 */
 }
 
 .profile-card {
