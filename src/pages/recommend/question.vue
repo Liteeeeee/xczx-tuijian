@@ -311,6 +311,15 @@ async function submitForm() {
 
 <template>
   <view class="question-page">
+    <!-- 提交时的 Loading 遮罩层 -->
+    <view v-if="submitting" class="loading-overlay">
+      <image
+        class="loading-gif"
+        src="/static/images/推荐结果 demo/loading.gif"
+        mode="aspectFit"
+      />
+    </view>
+
     <view class="question-inner">
       <view class="custom-nav">
         <view class="avatar-block">
@@ -407,6 +416,25 @@ async function submitForm() {
   background: url("/static/images/推荐结果 demo/background.png") no-repeat top
     center / cover;
   background-color: #fff8f1;
+}
+
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(20rpx);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loading-gif {
+  width: 320rpx;
+  height: 320rpx;
 }
 
 .question-inner {
