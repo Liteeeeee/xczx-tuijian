@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, computed } from "vue";
-import { getComboList } from "@/utils/api";
+import { getComboList, getBannerList } from "@/utils/api";
 import { useAppStore } from "@/store/app";
 
 const store = useAppStore();
@@ -8,6 +8,42 @@ const store = useAppStore();
 const loading = ref(false);
 const combos = ref([]);
 const total = ref(0);
+const banners = ref([]);
+
+async function loadBanners() {
+  try {
+    const res = await getBannerList();
+    // 假设返回结构为 { code, msg, data: [] } 或平铺 data
+    let list = Array.isArray(res && res.data)
+      ? res.data
+      : Array.isArray(res)
+        ? res
+        : [];
+
+    if (list.length > 0) {
+      // 兼容后端不同字段名，将 imageUrl 映射到我们使用的 picUrl
+      banners.value = list.map((item) => ({
+        id: item.bannerId || item.id,
+        picUrl: item.imageUrl || item.picUrl,
+      }));
+    } else {
+      // 没配置数据时，保留一个默认兜底图
+      banners.value = [
+        {
+          id: 1,
+          picUrl: "/static/images/推荐 demo 首页切图/Group 8@2x.png",
+        },
+      ];
+    }
+  } catch (ignore) {
+    banners.value = [
+      {
+        id: 1,
+        picUrl: "/static/images/推荐 demo 首页切图/Group 8@2x.png",
+      },
+    ];
+  }
+}
 
 async function loadCombos() {
   loading.value = true;
@@ -24,7 +60,10 @@ async function loadCombos() {
   }
 }
 
-onMounted(loadCombos);
+onMounted(() => {
+  loadBanners();
+  loadCombos();
+});
 
 function goRecommend() {
   uni.navigateTo({
@@ -80,6 +119,17 @@ function comboTag(combo) {
   return "精选方案";
 }
 
+function formatPicUrl(url) {
+  if (!url) return "";
+  // 1. 去除 URL 中可能被错误包裹的反引号
+  // 2. 将空格转换为 %20
+  return url.replace(/`/g, "").replace(/ /g, "%20");
+}
+
+function onBannerError(item) {
+  item.picUrl = "/static/images/推荐 demo 首页切图/Group 8@2x.png";
+}
+
 const userName = computed(() => {
   const phone = (store.user && store.user.phone) || "";
   if (phone && phone.length >= 7)
@@ -108,11 +158,25 @@ const userAvatarBg = computed(() => "#BC581C");
           </view>
         </view>
 
-        <image
-          class="hero-bg"
-          src="/static/images/推荐 demo 首页切图/Group 8@2x.png"
-          mode="widthFix"
-        />
+        <swiper
+          class="hero-swiper"
+          :indicator-dots="banners.length > 1"
+          :autoplay="banners.length > 1"
+          :interval="3000"
+          :duration="500"
+          circular
+          indicator-color="rgba(255, 255, 255, 0.4)"
+          indicator-active-color="#ffffff"
+        >
+          <swiper-item v-for="item in banners" :key="item.id">
+            <image
+              class="hero-bg"
+              :src="formatPicUrl(item.picUrl)"
+              mode="widthFix"
+              @error="onBannerError(item)"
+            />
+          </swiper-item>
+        </swiper>
       </view>
     </view>
 
@@ -271,6 +335,10 @@ const userAvatarBg = computed(() => "#BC581C");
   border-radius: 0;
   overflow: hidden;
   background: transparent;
+}
+.hero-swiper {
+  width: 100%;
+  height: 815rpx; /* 原图比例 563x612，转换为 750rpx 宽度的标准屏幕对应高度约为 815rpx */
 }
 .hero-bg {
   width: 100%;

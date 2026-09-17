@@ -40,6 +40,15 @@ export function getComboList(params) {
   });
 }
 
+// 轮播图列表
+export function getBannerList(params) {
+  return request({
+    url: '/app/banner/list',
+    method: 'GET',
+    data: params,
+  });
+}
+
 // ========== C 端 AI 对话 ==========
 
 // 默认 AI 问题（data 为字符串数组）
