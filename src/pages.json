@@ -38,6 +38,7 @@
     {
       "path": "pages/user/index",
       "style": {
+        "navigationStyle": "custom",
         "navigationBarTitleText": "我的"
       }
     },
@@ -62,6 +63,7 @@
     {
       "path": "pages/user/login",
       "style": {
+        "navigationStyle": "custom",
         "navigationBarTitleText": "手机号码登录"
       }
     }
