@@ -160,7 +160,7 @@ const userAvatarBg = computed(() => "#BC581C");
               mode="aspectFit"
             />
             <view class="avatar-meta">
-              <view class="avatar-title">AI面包推荐官</view>
+              <view class="avatar-title">元气食集</view>
               <view class="avatar-sub">用AI发现更适合你的美味生活</view>
             </view>
           </view>
