@@ -209,14 +209,6 @@ function comboProducts(combo) {
               </view>
             </view>
           </view>
-          <view class="theme-tag" :class="getThemeMeta(idx).badgeClass">
-            <text class="theme-tag-emoji">{{
-              getThemeMeta(idx).tagEmoji
-            }}</text>
-            <text class="theme-tag-text">
-              {{ comboSubtitle(combo, getThemeMeta(idx).tag) }}
-            </text>
-          </view>
         </view>
 
         <scroll-view class="theme-products" scroll-x show-scrollbar="false">
@@ -342,12 +334,14 @@ function comboProducts(combo) {
   display: flex;
   flex-direction: column;
   gap: 24rpx;
+  position: relative;
+  top: -85px;
 }
 
 .theme-card {
   border-radius: 28rpx;
   padding: 28rpx 24rpx;
-  box-shadow: 0 6rpx 20rpx rgba(29, 33, 41, 0.04);
+  border: 1px solid #ffffff;
   background: #fffaf5;
 }
 
@@ -454,11 +448,11 @@ function comboProducts(combo) {
 }
 
 .product-img-wrap {
-  width: 116rpx;
-  height: 116rpx;
-  border-radius: 50%;
-  background: #fdfbf9;
-  box-shadow: 0 2rpx 12rpx rgba(29, 33, 41, 0.05);
+  width: 76px;
+  height: 76px;
+  background: linear-gradient(180deg, #fdf7f0 0%, #fdfaf4 100%);
+  border-radius: 10px 10px 10px 10px;
+  border: 1px solid #ffffff;
   overflow: hidden;
   display: flex;
   align-items: center;

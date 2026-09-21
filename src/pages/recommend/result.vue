@@ -636,12 +636,7 @@ function saveReport() {
   }, 1500);
 }
 
-function openProduct(product) {
-  uni.showToast({
-    title: `查看：${product.productName}`,
-    icon: "none",
-  });
-}
+function openProduct(product) {}
 
 function goBack() {
   const pages = getCurrentPages();
@@ -914,7 +909,7 @@ function goBack() {
   aspect-ratio: 1 / 1;
   padding: 16rpx;
   box-sizing: border-box;
-  background: linear-gradient(160deg, #fffaf3 0%, #fff4e6 100%);
+  background: #ffffff;
 }
 
 .grid-img {
