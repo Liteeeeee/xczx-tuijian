@@ -474,10 +474,6 @@ const reply = computed(() => {
   return typeof v === "string" ? v : "";
 });
 const products = computed(() => extractList(recommendation.value));
-const recommendMode = computed(() => {
-  const v = recommendation.value && recommendation.value.recommendMode;
-  return typeof v === "string" ? v : "";
-});
 const sessionTitle = computed(() => {
   const v = recommendation.value;
   if (!v) return "";
@@ -532,17 +528,17 @@ const questionDisplay = computed(() => {
 const productDesc = (product, idx) => {
   if (!product) return "";
   if (typeof product.reason === "string" && product.reason) {
-    const slice = product.reason.replace(/\r?\n/g, " ").slice(0, 30);
+    const slice = product.reason.replace(/\r?\n/g, " ").slice(0, 20);
     if (slice) return slice;
   }
   if (typeof product.description === "string" && product.description) {
-    return product.description.replace(/\r?\n/g, " ").slice(0, 30);
+    return product.description.replace(/\r?\n/g, " ").slice(0, 20);
   }
   if (typeof product.sellingPoints === "string" && product.sellingPoints) {
-    return product.sellingPoints.slice(0, 24);
+    return product.sellingPoints.slice(0, 18);
   }
   if (typeof product.features === "string" && product.features) {
-    return product.features.slice(0, 24);
+    return product.features.slice(0, 18);
   }
   const defaults = [
     "果香浓郁，营养轻负担",
@@ -579,44 +575,6 @@ const productCover = (product, idx) => {
     : "/static/images/推荐结果 demo/默认商品底图 2.png";
 };
 
-const modeText = computed(() => {
-  const map = {
-    matched: "精准匹配",
-    fallback: "通用推荐",
-    partial: "部分匹配",
-  };
-  return map[recommendMode.value] || "智能推荐";
-});
-
-const scoreLevel = (score) => {
-  const s = Number(score) || 0;
-  if (s <= 0) return { label: "备选", cls: "score-zero" };
-  const list = products.value
-    .map((p) => Number(p.score) || 0)
-    .filter((v) => v > 0);
-  const max = list.length ? Math.max(...list) : 0;
-  if (max > 0) {
-    const ratio = s / max;
-    if (ratio >= 0.85) return { label: "高匹配", cls: "score-high" };
-    if (ratio >= 0.6) return { label: "中匹配", cls: "score-mid" };
-    return { label: "参考", cls: "score-low" };
-  }
-  if (s >= 80) return { label: "高匹配", cls: "score-high" };
-  if (s >= 40) return { label: "中匹配", cls: "score-mid" };
-  return { label: "参考", cls: "score-low" };
-};
-
-const formatPrice = (price, unit) => {
-  const num = Number(price);
-  if (Number.isNaN(num)) return `${price || 0}${unit || ""}`;
-  return `¥${num.toFixed(2)}${unit ? ` / ${unit}` : ""}`;
-};
-
-const productInitial = (name) => {
-  const n = name || "";
-  return n.slice(0, 1);
-};
-
 function goRecommend() {
   uni.navigateTo({
     url: "/pages/recommend/question",
@@ -637,22 +595,12 @@ function saveReport() {
 }
 
 function openProduct(product) {}
-
-function goBack() {
-  const pages = getCurrentPages();
-  if (pages && pages.length > 1) {
-    uni.navigateBack();
-    return;
-  }
-  uni.switchTab({
-    url: "/pages/index/index",
-  });
-}
 </script>
 
 <template>
   <view class="page-shell result-page">
     <view class="page-inner">
+      <!-- 自定义导航栏 -->
       <view class="custom-nav">
         <view class="avatar-block">
           <image
@@ -661,9 +609,13 @@ function goBack() {
             mode="aspectFit"
           />
           <view class="avatar-meta">
-            <view class="avatar-title">元气食集</view>
+            <view class="avatar-title">AI面包推荐官</view>
             <view class="avatar-sub">用AI发现更适合你的美味生活</view>
           </view>
+        </view>
+        <view class="nav-right">
+          <text class="nav-right-icon">···</text>
+          <text class="nav-right-dot">⊙</text>
         </view>
       </view>
 
@@ -672,63 +624,63 @@ function goBack() {
       </view>
 
       <template v-else>
-        <view v-if="questionDisplay" class="user-bubble">
-          <view class="user-bubble-card">
-            <text class="user-bubble-text">{{ questionDisplay }}</text>
-          </view>
-          <view class="user-avatar">
-            <text class="user-avatar-letter">U</text>
-          </view>
+        <!-- 用户问题气泡 -->
+        <view v-if="questionDisplay" class="text-wrapper_1 flex-col">
+          <text class="paragraph_1">{{ questionDisplay }}</text>
         </view>
 
+        <!-- 为你推荐 标题 -->
         <view class="rec-title-block">
+          <image
+            class="rec-title-icon"
+            src="/static/images/推荐结果 demo/顶部 icon.png"
+            mode="aspectFit"
+          />
           <view class="rec-title-left">
-            <image
-              class="rec-title-icon"
-              src="/static/images/推荐结果 demo/为你推荐 icon.png"
-              mode="aspectFit"
-            />
             <text class="rec-title-text">为你推荐</text>
+            <text class="rec-ai-tag">AI</text>
           </view>
         </view>
-      </template>
 
-      <view v-if="products.length && !loadingSession" class="grid-wrap">
-        <view
-          v-for="(product, idx) in products"
-          :key="product.productId || idx"
-          class="grid-item"
-          @tap="openProduct(product)"
-        >
-          <view class="grid-img-wrap">
-            <image
-              class="grid-img"
-              :src="productCover(product, idx)"
-              mode="aspectFill"
-            />
-          </view>
-          <view class="grid-text">
+        <!-- 商品网格 -->
+        <view v-if="products.length" class="product-grid">
+          <view
+            v-for="(product, idx) in products"
+            :key="product.productId || idx"
+            class="grid-item"
+            @tap="openProduct(product)"
+          >
+            <view class="grid-img-wrap">
+              <image
+                class="grid-img"
+                :src="productCover(product, idx)"
+                mode="aspectFill"
+              />
+            </view>
             <view class="grid-name">{{ product.productName }}</view>
             <view class="grid-desc">{{ productDesc(product, idx) }}</view>
           </view>
         </view>
-      </view>
 
-      <view
-        v-if="products.length && !loadingSession"
-        class="save-bottom"
-        @tap="saveReport"
-        >保存营养报告</view
-      >
-      <view
-        v-if="products.length && !loadingSession"
-        class="save-bottom-spacer"
-      ></view>
+        <!-- 空状态 -->
+        <view v-if="!products.length" class="empty-result">
+          <view class="empty-title">还未生成智能推荐结果</view>
+          <view class="empty-action" @tap="goRecommend">立即填写</view>
+        </view>
+      </template>
 
-      <view v-if="!products.length && !loadingSession" class="empty-result">
-        <view class="empty-title">还未生成智能推荐结果</view>
-        <view class="empty-action" @tap="goRecommend">立即填写</view>
+      <!-- 底部占位 -->
+      <view class="bottom-spacer" v-if="products.length"></view>
+    </view>
+
+    <!-- 底部悬浮操作栏 -->
+    <view v-if="products.length && !loadingSession" class="bottom-bar">
+      <view class="bottom-bar-inner">
+        <view class="btn-primary" @tap="saveReport">
+          <text class="btn-text-bold">保存营养报告</text>
+        </view>
       </view>
+      <view class="safe-area"></view>
     </view>
   </view>
 </template>
@@ -740,7 +692,7 @@ function goBack() {
   overflow: hidden;
   background-color: #fff8f1;
   background-image: url("/static/images/推荐结果 demo/background.png");
-  background-size: cover;
+  background-size: 100% auto;
   background-position: top center;
   background-repeat: no-repeat;
 }
@@ -750,29 +702,30 @@ function goBack() {
   display: flex;
   flex-direction: column;
   gap: 28rpx;
-  padding: 0 32rpx 48rpx;
+  padding: 0 28rpx 48rpx;
   min-height: 100vh;
+  padding-bottom: calc(200rpx + env(safe-area-inset-bottom));
 }
 
+/* ==================== 导航栏 ==================== */
 .custom-nav {
-  display: grid;
-  grid-template-columns: 1fr;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   padding-top: calc(var(--status-bar-height, 44px) + 16rpx);
-  padding-bottom: 18rpx;
+  padding-bottom: 20rpx;
 }
 
 .avatar-block {
   display: flex;
   align-items: center;
-  gap: 16rpx;
-  margin-left: 0;
+  gap: 14rpx;
 }
 
 .avatar {
-  width: 72rpx;
-  height: 72rpx;
-  border-radius: 20rpx;
+  width: 60rpx;
+  height: 60rpx;
+  border-radius: 18rpx;
   overflow: hidden;
   flex-shrink: 0;
 }
@@ -780,23 +733,44 @@ function goBack() {
 .avatar-meta {
   display: flex;
   flex-direction: column;
-  gap: 4rpx;
+  gap: 2rpx;
   min-width: 0;
 }
 
 .avatar-title {
-  font-size: 30rpx;
-  font-weight: 700;
+  font-size: 28rpx;
+  font-weight: 800;
   color: #1d2129;
   line-height: 1.2;
 }
 
 .avatar-sub {
-  font-size: 22rpx;
+  font-size: 20rpx;
   color: #86909c;
-  line-height: 1.4;
+  line-height: 1.2;
 }
 
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 28rpx;
+}
+
+.nav-right-icon {
+  font-size: 36rpx;
+  color: #4e5969;
+  letter-spacing: 2rpx;
+  line-height: 1;
+}
+
+.nav-right-dot {
+  font-size: 28rpx;
+  color: #4e5969;
+  line-height: 1;
+  font-weight: 700;
+}
+
+/* ==================== 加载中 ==================== */
 .empty-loading {
   padding: 80rpx 0 40rpx;
   display: flex;
@@ -811,105 +785,101 @@ function goBack() {
   background: rgba(255, 255, 255, 0.6);
 }
 
-.user-bubble {
+/* ==================== 用户气泡 ==================== */
+.text-wrapper_1 {
+  box-shadow: 0px 0px 10px 0px rgba(188, 88, 28, 0.1);
+  background-color: rgba(255, 255, 255, 1);
+  border-radius: 7px;
+  padding: 18rpx 26rpx;
+  box-sizing: border-box;
+}
+
+.flex-col {
   display: flex;
-  align-items: flex-start;
-  justify-content: flex-end;
-  gap: 16rpx;
-  padding-top: 8rpx;
+  flex-direction: column;
 }
 
-.user-bubble-card {
-  position: relative;
-  max-width: 75%;
-  padding: 22rpx 24rpx;
-  border-radius: 24rpx 8rpx 24rpx 24rpx;
-  background: #ffffff;
-  box-shadow: 0 6rpx 20rpx rgba(29, 33, 41, 0.06);
-}
-
-.user-bubble-card::after {
-  content: "";
-  position: absolute;
-  top: 22rpx;
-  right: -10rpx;
-  width: 0;
-  height: 0;
-  border-top: 10rpx solid transparent;
-  border-bottom: 10rpx solid transparent;
-  border-left: 12rpx solid #ffffff;
-}
-
-.user-bubble-text {
+.paragraph_1 {
+  overflow-wrap: break-word;
+  color: rgba(188, 88, 28, 1);
   font-size: 28rpx;
-  line-height: 1.7;
-  color: #1d2129;
+  font-family: Source Han Sans SC-Regular;
+  font-weight: normal;
+  text-align: left;
+  line-height: 44rpx;
 }
 
-.user-avatar {
-  flex-shrink: 0;
-  width: 72rpx;
-  height: 72rpx;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #ffb088 0%, #ff8899 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-top: 4rpx;
-}
-
-.user-avatar-letter {
-  font-size: 34rpx;
-  font-weight: 700;
-  color: #ffffff;
-}
-
+/* ==================== 推荐标题栏 ==================== */
 .rec-title-block {
   display: flex;
   align-items: center;
-  gap: 14rpx;
-  padding: 12rpx 4rpx 4rpx;
+  gap: 10rpx;
+  padding: 8rpx 4rpx 4rpx;
 }
 
 .rec-title-icon {
   width: 56rpx;
   height: 56rpx;
   flex-shrink: 0;
-  border-radius: 16rpx;
+  border-radius: 18rpx;
   background: #ffffff;
   box-shadow: 0 4rpx 12rpx rgba(29, 33, 41, 0.06);
+  overflow: hidden;
+}
+
+.rec-title-left {
+  display: flex;
+  align-items: flex-end;
+  gap: 10rpx;
 }
 
 .rec-title-text {
-  font-size: 36rpx;
+  font-size: 32rpx;
   font-weight: 800;
   color: #a24617;
   line-height: 1.2;
-  letter-spacing: 2rpx;
 }
 
-.grid-wrap {
+.rec-ai-tag {
+  margin-bottom: 2rpx;
+  font-size: 18rpx;
+  font-weight: 700;
+  color: #ffffff;
+  background: linear-gradient(135deg, #bc581c 0%, #d9743a 100%);
+  padding: 2rpx 10rpx;
+  border-radius: 8rpx;
+  line-height: 1.4;
+}
+
+/* ==================== 商品网格 ==================== */
+.product-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 20rpx;
-  padding-top: 8rpx;
+  padding-top: 4rpx;
 }
 
 .grid-item {
   background: #ffffff;
-  border-radius: 28rpx;
+  border-radius: 24rpx;
   overflow: hidden;
-  box-shadow: 0 8rpx 24rpx rgba(29, 33, 41, 0.06);
+  box-shadow: 0 8rpx 24rpx rgba(29, 33, 41, 0.05);
   display: flex;
   flex-direction: column;
+}
+
+.grid-item:active {
+  transform: scale(0.99);
+  opacity: 0.95;
 }
 
 .grid-img-wrap {
   width: 100%;
   aspect-ratio: 1 / 1;
-  padding: 16rpx;
-  box-sizing: border-box;
   background: #ffffff;
+  overflow: hidden;
+  padding: 14rpx;
+  box-sizing: border-box;
 }
 
 .grid-img {
@@ -919,80 +889,98 @@ function goBack() {
   background: #faf0e3;
 }
 
-.grid-text {
-  padding: 14rpx 20rpx 22rpx;
-  display: flex;
-  flex-direction: column;
-  gap: 8rpx;
-}
-
 .grid-name {
-  font-size: 28rpx;
-  font-weight: 700;
+  padding: 0 20rpx;
+  margin-top: 4rpx;
+  font-size: 26rpx;
+  font-weight: 800;
   color: #1d2129;
   line-height: 1.35;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
 }
 
 .grid-desc {
+  padding: 4rpx 20rpx 18rpx;
   font-size: 22rpx;
   color: #86909c;
   line-height: 1.5;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
+  word-break: break-all;
 }
 
+/* ==================== 空状态 ==================== */
 .empty-result {
-  padding: 60rpx 32rpx 48rpx;
+  margin-top: 60rpx;
+  padding: 80rpx 32rpx 48rpx;
   text-align: center;
-  background: rgba(255, 255, 255, 0.88);
-  border-radius: 28rpx;
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 32rpx;
   box-shadow: 0 8rpx 24rpx rgba(29, 33, 41, 0.05);
 }
 
 .empty-title {
   font-size: 30rpx;
   color: #4e5969;
-  margin-bottom: 24rpx;
+  margin-bottom: 32rpx;
 }
 
 .empty-action {
   display: inline-block;
-  padding: 18rpx 56rpx;
+  padding: 20rpx 64rpx;
   border-radius: 999rpx;
   background: linear-gradient(135deg, #bc581c 0%, #d9743a 100%);
   color: #ffffff;
   font-size: 28rpx;
-  font-weight: 600;
+  font-weight: 700;
   box-shadow: 0 6rpx 16rpx rgba(188, 88, 28, 0.2);
 }
 
-.save-bottom {
-  margin-top: 16rpx;
-  height: 92rpx;
-  line-height: 92rpx;
+/* ==================== 底部占位 ==================== */
+.bottom-spacer {
   flex-shrink: 0;
-  text-align: center;
-  border-radius: 999rpx;
-  background: linear-gradient(135deg, #bc581c 0%, #d9743a 100%);
-  color: #ffffff;
-  font-size: 30rpx;
-  font-weight: 700;
-  letter-spacing: 2rpx;
-  box-shadow: 0 8rpx 24rpx rgba(188, 88, 28, 0.28);
-  -webkit-tap-highlight-color: transparent;
-  box-sizing: border-box;
+  height: 40rpx;
 }
 
-.save-bottom-spacer {
+/* ==================== 底部悬浮操作栏 ==================== */
+.bottom-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 999;
+  background: linear-gradient(to top, #fff8f1 70%, rgba(255, 248, 241, 0));
+  padding-top: 24rpx;
+}
+
+.bottom-bar-inner {
+  margin: 0 28rpx;
+  display: flex;
+  align-items: center;
+}
+
+.btn-primary {
+  flex: 1;
+  height: 92rpx;
+  border-radius: 999rpx;
+  background: linear-gradient(135deg, #a0481b 0%, #c96d33 50%, #8f4219 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8rpx 28rpx rgba(188, 88, 28, 0.32);
+}
+
+.btn-primary:active {
+  opacity: 0.92;
+  transform: translateY(1rpx);
+}
+
+.btn-text-bold {
+  font-size: 30rpx;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: 2rpx;
+}
+
+.safe-area {
   width: 100%;
-  height: constant(safe-area-inset-bottom);
-  height: env(safe-area-inset-bottom);
-  flex-shrink: 0;
+  height: calc(env(safe-area-inset-bottom) + 16rpx);
 }
 </style>
