@@ -318,6 +318,7 @@ async function submitForm() {
         src="/static/images/推荐结果 demo/loading.gif"
         mode="aspectFit"
       />
+      <view class="loading-text">正在加载，预计5-8s生成结果...</view>
     </view>
 
     <view class="question-inner">
@@ -428,6 +429,7 @@ async function submitForm() {
   backdrop-filter: blur(20rpx);
   z-index: 9999;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
 }
@@ -435,6 +437,14 @@ async function submitForm() {
 .loading-gif {
   width: 320rpx;
   height: 320rpx;
+}
+
+.loading-text {
+  margin-top: 16rpx;
+  font-size: 28rpx;
+  color: #86909c;
+  font-weight: 500;
+  letter-spacing: 2rpx;
 }
 
 .question-inner {
@@ -504,7 +514,7 @@ async function submitForm() {
 }
 
 .q-title {
-  font-size: 28rpx;
+  font-size: 36rpx;
   font-weight: 800;
   color: #a24617;
   letter-spacing: 1rpx;
