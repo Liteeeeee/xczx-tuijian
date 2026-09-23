@@ -1,5 +1,5 @@
 <script setup>
-import { useAppStore } from '@/store/app';
+import { useAppStore } from "@/store/app";
 import { onShow } from "@dcloudio/uni-app";
 import CustomTabBar from "@/components/custom-tab-bar/custom-tab-bar.vue";
 
@@ -7,23 +7,31 @@ const store = useAppStore();
 
 onShow(() => {
   uni.hideTabBar({
-    animation: false
+    animation: false,
   });
 });
 
 const menus = [
-  { title: '历史对话', url: '/pages/recommend/history', icon: '/static/images/个人中心/历史对话.png' },
-  { title: '关于我们', url: '/pages/user/about', icon: '/static/images/个人中心/关于我们.png' },
+  {
+    title: "上次推荐结果",
+    url: "/pages/recommend/history",
+    icon: "/static/images/个人中心/历史对话.png",
+  },
+  {
+    title: "关于我们",
+    url: "/pages/user/about",
+    icon: "/static/images/个人中心/关于我们.png",
+  },
 ];
 
 function goLogin() {
   uni.navigateTo({
-    url: '/pages/user/login',
+    url: "/pages/user/login",
   });
 }
 
 function goPage(url) {
-  if (!store.loggedIn && url !== '/pages/user/about') {
+  if (!store.loggedIn && url !== "/pages/user/about") {
     goLogin();
     return;
   }
@@ -33,12 +41,12 @@ function goPage(url) {
 function logout() {
   store.logout();
   uni.showToast({
-    title: '已退出账号',
-    icon: 'success',
+    title: "已退出账号",
+    icon: "success",
     duration: 1200,
   });
   setTimeout(() => {
-    uni.reLaunch({ url: '/pages/user/login' });
+    uni.reLaunch({ url: "/pages/user/login" });
   }, 1200);
 }
 </script>
@@ -47,10 +55,18 @@ function logout() {
   <view class="page-shell user-page">
     <view class="header-bg">
       <view class="profile-wrap" @tap="!store.loggedIn ? goLogin() : null">
-        <image class="avatar" src="/static/images/推荐 demo 首页切图/图标1@2x.png" mode="aspectFill" />
+        <image
+          class="avatar"
+          src="/static/images/推荐 demo 首页切图/图标1@2x.png"
+          mode="aspectFill"
+        />
         <view class="profile-info">
-          <view class="profile-name">{{ store.loggedIn ? store.displayName : '未登录' }}</view>
-          <view class="profile-phone">{{ store.loggedIn ? store.maskedPhone : '点击登录账号' }}</view>
+          <view class="profile-name">{{
+            store.loggedIn ? store.displayName : "未登录"
+          }}</view>
+          <view class="profile-phone">{{
+            store.loggedIn ? store.maskedPhone : "点击登录账号"
+          }}</view>
         </view>
         <view class="arrow-right" v-if="!store.loggedIn">›</view>
       </view>
@@ -58,7 +74,12 @@ function logout() {
 
     <view class="content-body">
       <view class="menu-card">
-        <view v-for="(item, index) in menus" :key="item.title" class="menu-item" @tap="goPage(item.url)">
+        <view
+          v-for="(item, index) in menus"
+          :key="item.title"
+          class="menu-item"
+          @tap="goPage(item.url)"
+        >
           <image class="menu-icon" :src="item.icon" mode="aspectFit" />
           <text class="menu-title">{{ item.title }}</text>
           <text class="menu-arrow">›</text>
@@ -66,7 +87,9 @@ function logout() {
         </view>
       </view>
 
-      <view v-if="store.loggedIn" class="logout-btn" @tap="logout">退出登录</view>
+      <view v-if="store.loggedIn" class="logout-btn" @tap="logout"
+        >退出登录</view
+      >
     </view>
 
     <custom-tab-bar :current="2" />
