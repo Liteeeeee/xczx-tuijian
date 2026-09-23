@@ -24,6 +24,12 @@ const items = computed(() => {
     .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
 });
 
+function isAgeQuestion(item) {
+  if (!item || !Array.isArray(item.options)) return false;
+  const keys = ["少年", "青年", "中老年"];
+  return keys.every((k) => item.options.some((op) => String(op).includes(k)));
+}
+
 function initForm() {
   items.value.forEach((item) => {
     const prev = store.lastAnswers[item.itemId];
@@ -347,7 +353,34 @@ async function submitForm() {
           >
             <view class="q-title">{{ `${qIdx + 1}.${item.question}` }}</view>
 
-            <view v-if="item.questionType === 'radio'" class="opt-grid">
+            <view
+              v-if="item.questionType === 'radio' && isAgeQuestion(item)"
+              class="age-grid"
+            >
+              <view
+                v-for="option in item.options"
+                :key="option"
+                class="age-card"
+                :class="{ active: form[item.itemId] === option }"
+                @tap="selectOption(item.itemId, option)"
+              >
+                <view class="age-icon-wrap">
+                  <image
+                    class="age-icon-img"
+                    :src="
+                      '/static/images/range/' +
+                      option +
+                      (form[item.itemId] === option ? 'active' : '') +
+                      '.png'
+                    "
+                    mode="aspectFit"
+                  />
+                </view>
+                <text class="age-name">{{ option }}</text>
+              </view>
+            </view>
+
+            <view v-else-if="item.questionType === 'radio'" class="opt-grid">
               <view
                 v-for="option in item.options"
                 :key="option"
@@ -355,12 +388,6 @@ async function submitForm() {
                 :class="{ active: form[item.itemId] === option }"
                 @tap="selectOption(item.itemId, option)"
               >
-                <view class="opt-radio">
-                  <view
-                    v-if="form[item.itemId] === option"
-                    class="opt-radio-dot"
-                  ></view>
-                </view>
                 <text class="opt-text">{{ option }}</text>
               </view>
             </view>
@@ -527,44 +554,73 @@ async function submitForm() {
   gap: 18rpx;
 }
 
+/* 年龄特殊布局 */
+.age-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20rpx;
+}
+
+.age-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 28rpx 12rpx 20rpx;
+  border-radius: 24rpx;
+  background: #fdf8f2;
+  border: 2rpx solid transparent;
+  transition: all 0.15s ease;
+}
+
+.age-card.active {
+  background: linear-gradient(90deg, #f37e41 0%, #fcbb69 100%);
+  border-radius: 12px;
+  border: 1px solid #fef5e7;
+}
+
+.age-card.active .age-name {
+  color: #ffffff;
+}
+
+.age-icon-wrap {
+  margin-bottom: 16rpx;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.age-icon-img {
+  width: 120rpx;
+  height: 120rpx;
+}
+
+.age-name {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #8a3d12;
+  letter-spacing: 2rpx;
+}
+
 .opt-pill {
   display: flex;
   align-items: center;
-  gap: 16rpx;
+  justify-content: center;
   min-height: 84rpx;
-  padding: 0 24rpx;
+  padding: 0 28rpx;
   border-radius: 999rpx;
-  background: #fff3e6;
+  background: #fdf8f2;
   border: 2rpx solid transparent;
   transition: all 0.15s ease;
 }
 
 .opt-pill.active {
-  background: #ffe1c9;
-  border-color: #bc581c;
+  background: linear-gradient(90deg, #f37e41 0%, #fcbb69 100%);
+  border: 1px solid #fef5e7;
 }
 
-.opt-radio {
-  width: 30rpx;
-  height: 30rpx;
-  border-radius: 50%;
-  border: 3rpx solid #c9cdd4;
-  background: #ffffff;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.opt-pill.active .opt-radio {
-  border-color: #bc581c;
-}
-
-.opt-radio-dot {
-  width: 16rpx;
-  height: 16rpx;
-  border-radius: 50%;
-  background: #bc581c;
+.opt-pill.active .opt-text {
+  color: #ffffff !important;
 }
 
 .opt-check {
@@ -577,6 +633,7 @@ async function submitForm() {
   display: flex;
   align-items: center;
   justify-content: center;
+  margin-right: 14rpx;
 }
 
 .opt-pill.active .opt-check {

@@ -582,16 +582,9 @@ function goRecommend() {
 }
 
 function saveReport() {
-  uni.showToast({
-    title: "营养报告已保存",
-    icon: "success",
-    duration: 1500,
+  uni.switchTab({
+    url: "/pages/index/index",
   });
-  setTimeout(() => {
-    uni.switchTab({
-      url: "/pages/index/index",
-    });
-  }, 1500);
 }
 
 function openProduct(product) {}
@@ -609,7 +602,7 @@ function openProduct(product) {}
             mode="aspectFit"
           />
           <view class="avatar-meta">
-            <view class="avatar-title">AI面包推荐官</view>
+            <view class="avatar-title">元气食集</view>
             <view class="avatar-sub">用AI发现更适合你的美味生活</view>
           </view>
         </view>
@@ -638,7 +631,6 @@ function openProduct(product) {}
           />
           <view class="rec-title-left">
             <text class="rec-title-text">为你推荐</text>
-            <text class="rec-ai-tag">AI</text>
           </view>
         </view>
 
@@ -675,10 +667,8 @@ function openProduct(product) {}
 
     <!-- 底部悬浮操作栏 -->
     <view v-if="products.length && !loadingSession" class="bottom-bar">
-      <view class="bottom-bar-inner">
-        <view class="btn-primary" @tap="saveReport">
-          <text class="btn-text-bold">保存营养报告</text>
-        </view>
+      <view class="block_10 flex-col" @tap="saveReport">
+        <text class="text_14">返回首页</text>
       </view>
       <view class="safe-area"></view>
     </view>
@@ -704,7 +694,7 @@ function openProduct(product) {}
   gap: 28rpx;
   padding: 0 28rpx 48rpx;
   min-height: 100vh;
-  padding-bottom: calc(200rpx + env(safe-area-inset-bottom));
+  padding-bottom: calc(96rpx + env(safe-area-inset-bottom));
 }
 
 /* ==================== 导航栏 ==================== */
@@ -946,41 +936,48 @@ function openProduct(product) {}
   right: 0;
   bottom: 0;
   z-index: 999;
-  background: linear-gradient(to top, #fff8f1 70%, rgba(255, 248, 241, 0));
-  padding-top: 24rpx;
 }
 
-.bottom-bar-inner {
-  margin: 0 28rpx;
-  display: flex;
-  align-items: center;
-}
-
-.btn-primary {
-  flex: 1;
-  height: 92rpx;
-  border-radius: 999rpx;
-  background: linear-gradient(135deg, #a0481b 0%, #c96d33 50%, #8f4219 100%);
+.block_10 {
+  background-color: rgba(255, 255, 255, 1);
+  height: 96rpx;
+  border-left: none;
+  border-right: none;
+  border-bottom: none;
+  border-top: 0.5px solid rgba(242, 243, 245, 1);
+  margin-top: -2rpx;
+  width: 100%;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8rpx 28rpx rgba(188, 88, 28, 0.32);
 }
 
-.btn-primary:active {
-  opacity: 0.92;
-  transform: translateY(1rpx);
+.block_10:active {
+  opacity: 0.85;
 }
 
-.btn-text-bold {
-  font-size: 30rpx;
-  font-weight: 800;
-  color: #ffffff;
-  letter-spacing: 2rpx;
+.flex-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.text_14 {
+  height: 68rpx;
+  overflow-wrap: break-word;
+  color: rgba(255, 109, 56, 1);
+  font-size: 28rpx;
+  letter-spacing: 0.8421875238418579px;
+  font-family: Source Han Sans SC-Medium;
+  font-weight: 500;
+  text-align: center;
+  line-height: 66rpx;
+  margin-top: 14rpx;
 }
 
 .safe-area {
   width: 100%;
-  height: calc(env(safe-area-inset-bottom) + 16rpx);
+  height: calc(env(safe-area-inset-bottom));
+  background: #ffffff;
 }
 </style>
