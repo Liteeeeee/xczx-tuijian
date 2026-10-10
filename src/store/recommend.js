@@ -5,6 +5,8 @@ export const useRecommendStore = defineStore('recommend', () => {
   // 纯内存状态，不进行任何 localStorage 持久化
   // 页面关闭或应用退出后自动销毁，绝不产生跨会话脏数据
   const currentRecommendation = ref(null);
+  const lastQuestionText = ref('');
+  const sessionPayload = ref(null);
 
   function setRecommendation(data) {
     currentRecommendation.value = data;
@@ -14,9 +16,21 @@ export const useRecommendStore = defineStore('recommend', () => {
     currentRecommendation.value = null;
   }
 
+  function setLastQuestion(text) {
+    lastQuestionText.value = typeof text === 'string' ? text : '';
+  }
+
+  function setSessionPayload(data) {
+    sessionPayload.value = data || null;
+  }
+
   return {
     currentRecommendation,
+    lastQuestionText,
+    sessionPayload,
     setRecommendation,
     clearRecommendation,
+    setLastQuestion,
+    setSessionPayload,
   };
 });

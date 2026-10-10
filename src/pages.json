@@ -1,4 +1,11 @@
 {
+  "easycom": {
+    "autoscan": true,
+    "custom": {
+      "^app-tab-bar$": "@/components/custom-tab-bar/custom-tab-bar.vue",
+      "^privacy-popup$": "@/components/privacy-popup/privacy-popup.vue"
+    }
+  },
   "pages": [
     {
       "path": "pages/index/index",
@@ -79,6 +86,7 @@
     "selectedColor": "#BC581C",
     "backgroundColor": "#ffffff",
     "borderStyle": "white",
+    "custom": true,
     "list": [
       {
         "pagePath": "pages/index/index",

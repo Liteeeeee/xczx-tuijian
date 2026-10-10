@@ -222,9 +222,7 @@ async function submitForm() {
       // ignore
     }
     try {
-      if (typeof window !== "undefined") {
-        window.__XZZX_LAST_QUESTION__ = prompt;
-      }
+      recommendStore.setLastQuestion(prompt);
     } catch (ignore) {}
     try {
       uni.setStorageSync("xczx-tuijian-last-question", prompt);
@@ -452,13 +450,21 @@ async function submitForm() {
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(20rpx);
+  -webkit-backdrop-filter: blur(20rpx);
   z-index: 9999;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+}
+@supports (
+  (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))
+) {
+  .loading-overlay {
+    background: rgba(255, 255, 255, 0.72);
+  }
 }
 
 .loading-gif {

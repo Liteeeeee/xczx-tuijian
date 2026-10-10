@@ -12,9 +12,25 @@
     }
   },
   "mp-weixin": {
-    "appid": "",
+    "appid": "TO_BE_REPLACED",
     "setting": {
-      "urlCheck": false
+      "urlCheck": true,
+      "es6": true,
+      "enhance": true,
+      "postcss": true,
+      "minified": true,
+      "bigPackageSizeSupport": true
+    },
+    "usingComponents": true,
+    "permission": {
+      "scope.userLocation": {
+        "desc": "用于获取您的位置以推荐附近的门店"
+      }
+    },
+    "requiredPrivateInfos": [],
+    "lazyCodeLoading": "requiredComponents",
+    "optimization": {
+      "subPackages": true
     }
   }
 }

@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref, onMounted } from "vue";
-import { onLoad } from "@dcloudio/uni-app";
+import { onLoad, onShareAppMessage, onShareTimeline } from "@dcloudio/uni-app";
 import { useAppStore } from "@/store/app";
 import { useRecommendStore } from "@/store/recommend";
 import { getAiChatLog } from "@/utils/api";
@@ -353,6 +353,18 @@ onMounted(() => {
   }
 });
 
+onShareAppMessage(() => ({
+  title: "我的专属 AI 面包营养推荐 · 仙草甄选",
+  path: "/pages/index/index",
+  imageUrl: "/static/images/推荐 demo 首页切图/Group 8@2x.png",
+}));
+
+onShareTimeline(() => ({
+  title: "仙草甄选AI面包推荐",
+  imageUrl: "/static/images/推荐 demo 首页切图/Group 8@2x.png",
+  query: "",
+}));
+
 function normalizeProduct(item) {
   if (!item || typeof item !== "object") return null;
   const nameCands = [
@@ -488,9 +500,8 @@ const userQuestion = computed(() => {
     typeof store.lastQuestionText === "string" ? store.lastQuestionText : "";
   if (s) return s;
   try {
-    if (typeof window !== "undefined" && window.__XZZX_LAST_QUESTION__) {
-      return String(window.__XZZX_LAST_QUESTION__);
-    }
+    const fromStore = recommendStore.lastQuestionText;
+    if (typeof fromStore === "string" && fromStore) return fromStore;
   } catch (ignore) {}
   try {
     const v = uni.getStorageSync("xczx-tuijian-last-question");

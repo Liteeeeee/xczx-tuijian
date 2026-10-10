@@ -1,6 +1,10 @@
 <script setup>
 import { ref, onMounted, computed } from "vue";
-import { onShow } from "@dcloudio/uni-app";
+import {
+  onShow,
+  onShareAppMessage,
+  onShareTimeline,
+} from "@dcloudio/uni-app";
 import { getComboList, getBannerList } from "@/utils/api";
 import { useAppStore } from "@/store/app";
 import CustomTabBar from "@/components/custom-tab-bar/custom-tab-bar.vue";
@@ -17,6 +21,18 @@ onShow(() => {
     animation: false,
   });
 });
+
+onShareAppMessage(() => ({
+  title: "仙草甄选AI面包推荐 · 根据你的口味定制专属配方",
+  path: "/pages/index/index",
+  imageUrl: "/static/images/推荐 demo 首页切图/Group 8@2x.png",
+}));
+
+onShareTimeline(() => ({
+  title: "仙草甄选AI面包推荐",
+  imageUrl: "/static/images/推荐 demo 首页切图/Group 8@2x.png",
+  query: "",
+}));
 
 async function loadBanners() {
   try {

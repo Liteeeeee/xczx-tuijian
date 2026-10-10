@@ -246,13 +246,18 @@ function goRecommend() {
 }
 .session-card {
   position: relative;
-  background: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.88);
   backdrop-filter: blur(20rpx);
   -webkit-backdrop-filter: blur(20rpx);
   border-radius: 28rpx;
   padding: 28rpx;
   box-shadow: 0 10rpx 32rpx rgba(141, 85, 34, 0.08);
   overflow: hidden;
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .session-card {
+    background: rgba(255, 255, 255, 0.72);
+  }
 }
 .card-wheat-tag {
   position: absolute;

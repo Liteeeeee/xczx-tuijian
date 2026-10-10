@@ -7,6 +7,17 @@
 // 3. 登录后自动注入 Authorization: Bearer <token>。
 
 function resolveBaseUrl() {
+  // #ifdef MP-WEIXIN
+  // 小程序端兜底域名（小程序不支持 Vite 代理，必须是完整 HTTPS 域名）
+  // 生产打包时优先读取 VITE_API_BASE_URL，其次用以下占位域名（上线前请替换）
+  try {
+    const userVite = typeof __API_BASE_URL__ === 'string' ? __API_BASE_URL__ : '';
+    if (userVite) return userVite.replace(/\/+$/, '');
+  } catch (ignore) { /* ignore */ }
+  const MP_WEIXIN_DEFAULT_BASE_URL = 'https://api.xiancaozhenxuan.com';
+  return MP_WEIXIN_DEFAULT_BASE_URL;
+  // #endif
+  // #ifndef MP-WEIXIN
   try {
     const userVite = typeof __API_BASE_URL__ === 'string' ? __API_BASE_URL__ : '';
     if (userVite) return userVite.replace(/\/+$/, '');
@@ -14,6 +25,7 @@ function resolveBaseUrl() {
     // ignore
   }
   return '';
+  // #endif
 }
 
 const BASE_URL = resolveBaseUrl();
