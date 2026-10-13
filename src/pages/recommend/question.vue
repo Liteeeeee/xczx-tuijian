@@ -25,9 +25,22 @@ const items = computed(() => {
 });
 
 function isAgeQuestion(item) {
-  if (!item || !Array.isArray(item.options)) return false;
-  const keys = ["少年", "青年", "中老年"];
-  return keys.every((k) => item.options.some((op) => String(op).includes(k)));
+  if (!item) return false;
+  return String(item.question || "").includes("您的年龄范围是");
+}
+
+function cleanIconUrl(url) {
+  if (typeof url !== "string" || !url) return "";
+  return url.replace(/`/g, "").replace(/\s/g, "%20");
+}
+
+function getOptionIcon(item, index, active) {
+  if (!item || !Array.isArray(item.optionIcons)) return "";
+  const icon = item.optionIcons[index];
+  if (!icon) return "";
+  if (typeof icon === "string") return cleanIconUrl(icon);
+  const url = active ? icon.selected : icon.unselected;
+  return cleanIconUrl(url || "");
 }
 
 function initForm() {
@@ -345,68 +358,83 @@ async function submitForm() {
       <view v-if="loading" class="loading-tip">问卷加载中…</view>
 
       <template v-else-if="items.length">
-        <view class="form-card">
-          <view
-            v-for="(item, qIdx) in items"
-            :key="item.itemId"
-            class="q-block"
-          >
-            <view class="q-title">{{ `${qIdx + 1}.${item.question}` }}</view>
+        <view class="form-list">
+          <view v-for="item in items" :key="item.itemId" class="q-block">
+            <view class="q-title">{{ item.question }}</view>
 
             <view
               v-if="item.questionType === 'radio' && isAgeQuestion(item)"
               class="age-grid"
             >
               <view
-                v-for="option in item.options"
+                v-for="(option, optIdx) in item.options"
                 :key="option"
                 class="age-card"
                 :class="{ active: form[item.itemId] === option }"
                 @tap="selectOption(item.itemId, option)"
               >
-                <view class="age-icon-wrap">
-                  <image
-                    class="age-icon-img"
-                    :src="
-                      '/static/images/range/' +
-                      option +
-                      (form[item.itemId] === option ? 'active' : '') +
-                      '.png'
-                    "
-                    mode="aspectFit"
-                  />
-                </view>
+                <image
+                  v-if="
+                    getOptionIcon(item, optIdx, form[item.itemId] === option)
+                  "
+                  class="age-icon"
+                  :src="
+                    getOptionIcon(item, optIdx, form[item.itemId] === option)
+                  "
+                  mode="aspectFit"
+                />
                 <text class="age-name">{{ option }}</text>
               </view>
             </view>
 
             <view v-else-if="item.questionType === 'radio'" class="opt-grid">
               <view
-                v-for="option in item.options"
+                v-for="(option, optIdx) in item.options"
                 :key="option"
-                class="opt-pill"
+                class="opt-card"
                 :class="{ active: form[item.itemId] === option }"
                 @tap="selectOption(item.itemId, option)"
               >
+                <image
+                  v-if="
+                    getOptionIcon(item, optIdx, form[item.itemId] === option)
+                  "
+                  class="opt-icon"
+                  :src="
+                    getOptionIcon(item, optIdx, form[item.itemId] === option)
+                  "
+                  mode="aspectFit"
+                />
                 <text class="opt-text">{{ option }}</text>
               </view>
             </view>
 
             <view v-else-if="item.questionType === 'checkbox'" class="opt-grid">
               <view
-                v-for="option in item.options"
+                v-for="(option, optIdx) in item.options"
                 :key="option"
-                class="opt-pill"
+                class="opt-card"
                 :class="{ active: (form[item.itemId] || []).includes(option) }"
                 @tap="toggleOption(item.itemId, option)"
               >
-                <view class="opt-check">
-                  <text
-                    v-if="(form[item.itemId] || []).includes(option)"
-                    class="opt-check-tick"
-                    >✓</text
-                  >
-                </view>
+                <image
+                  v-if="
+                    getOptionIcon(
+                      item,
+                      optIdx,
+                      (form[item.itemId] || []).includes(option),
+                    )
+                  "
+                  class="opt-icon"
+                  :src="
+                    getOptionIcon(
+                      item,
+                      optIdx,
+                      (form[item.itemId] || []).includes(option),
+                    )
+                  "
+                  mode="aspectFit"
+                />
                 <text class="opt-text">{{ option }}</text>
               </view>
             </view>
@@ -529,15 +557,17 @@ async function submitForm() {
   color: #86909c;
 }
 
-.form-card {
-  background: #ffffff;
-  border-radius: 28rpx;
-  padding: 36rpx 32rpx 16rpx;
-  box-shadow: 0 6rpx 24rpx rgba(29, 33, 41, 0.06);
+.form-list {
+  display: flex;
+  flex-direction: column;
+  gap: 32rpx;
 }
 
 .q-block {
-  margin-bottom: 36rpx;
+  background: #ffffff;
+  border-radius: 28rpx;
+  padding: 36rpx 32rpx;
+  box-shadow: 0 6rpx 24rpx rgba(29, 33, 41, 0.06);
 }
 
 .q-title {
@@ -569,30 +599,26 @@ async function submitForm() {
   padding: 28rpx 12rpx 20rpx;
   border-radius: 24rpx;
   background: #fdf8f2;
-  border: 2rpx solid transparent;
+  border: 3rpx solid transparent;
+  color: #8a3d12;
   transition: all 0.15s ease;
 }
 
 .age-card.active {
-  background: linear-gradient(90deg, #f37e41 0%, #fcbb69 100%);
-  border-radius: 12px;
-  border: 1px solid #fef5e7;
+  background: #fff0e2;
+  border-radius: 24rpx;
+  border: 3rpx solid #b94d18;
+  color: #b94d18;
 }
 
 .age-card.active .age-name {
-  color: #ffffff;
+  color: #b94d18;
 }
 
-.age-icon-wrap {
+.age-icon {
+  width: 80rpx;
+  height: 80rpx;
   margin-bottom: 16rpx;
-  width: 100%;
-  display: flex;
-  justify-content: center;
-}
-
-.age-icon-img {
-  width: 120rpx;
-  height: 120rpx;
 }
 
 .age-name {
@@ -600,6 +626,37 @@ async function submitForm() {
   font-weight: 700;
   color: #8a3d12;
   letter-spacing: 2rpx;
+}
+
+/* 普通选项卡片：上 icon 下文本 */
+.opt-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 24rpx 12rpx 20rpx;
+  border-radius: 24rpx;
+  background: #fdf8f2;
+  border: 3rpx solid transparent;
+  color: #4e5969;
+  transition: all 0.15s ease;
+}
+
+.opt-card.active {
+  background: #fff0e2;
+  border-radius: 24rpx;
+  border: 3rpx solid #b94d18;
+  color: #b94d18;
+}
+
+.opt-card.active .opt-text {
+  color: #b94d18;
+}
+
+.opt-icon {
+  width: 40rpx;
+  height: 40rpx;
+  margin-bottom: 12rpx;
 }
 
 .opt-pill {
@@ -649,8 +706,8 @@ async function submitForm() {
 }
 
 .opt-text {
-  font-size: 28rpx;
-  color: #4e5969;
+  font-size: 26rpx;
+  color: #b94d18;
   font-weight: 500;
 }
 
