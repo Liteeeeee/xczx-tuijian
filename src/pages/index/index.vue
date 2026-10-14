@@ -11,6 +11,7 @@ const loading = ref(false);
 const combos = ref([]);
 const total = ref(0);
 const banners = ref([]);
+const swiperHeight = ref(815);
 
 onShow(() => {
   uni.hideTabBar({
@@ -34,6 +35,8 @@ async function loadBanners() {
         id: item.bannerId || item.id,
         picUrl: item.imageUrl || item.picUrl,
       }));
+      // 根据接口返回的第一张轮播图图片实际尺寸计算 swiper 高度
+      calcSwiperHeight(banners.value[0].picUrl);
     } else {
       // 没配置数据时，保留一个默认兜底图
       banners.value = [
@@ -42,6 +45,7 @@ async function loadBanners() {
           picUrl: "/static/images/推荐 demo 首页切图/Group 8@2x.png",
         },
       ];
+      swiperHeight.value = 815;
     }
   } catch (ignore) {
     banners.value = [
@@ -50,7 +54,20 @@ async function loadBanners() {
         picUrl: "/static/images/推荐 demo 首页切图/Group 8@2x.png",
       },
     ];
+    swiperHeight.value = 815;
   }
+}
+
+function calcSwiperHeight(url) {
+  if (!url) return;
+  uni.getImageInfo({
+    src: url,
+    success: (res) => {
+      if (res.width && res.height) {
+        swiperHeight.value = Math.round((750 / res.width) * res.height);
+      }
+    },
+  });
 }
 
 async function loadCombos() {
@@ -168,6 +185,7 @@ const userAvatarBg = computed(() => "#BC581C");
 
         <swiper
           class="hero-swiper"
+          :style="{ height: swiperHeight + 'rpx' }"
           :indicator-dots="banners.length > 1"
           :autoplay="banners.length > 1"
           :interval="3000"
@@ -339,7 +357,6 @@ const userAvatarBg = computed(() => "#BC581C");
 
 .hero-card {
   position: relative;
-  margin: 8rpx 0 0;
   width: 100%;
   border-radius: 0;
   overflow: hidden;
@@ -347,7 +364,7 @@ const userAvatarBg = computed(() => "#BC581C");
 }
 .hero-swiper {
   width: 100%;
-  height: 815rpx; /* 原图比例 563x612，转换为 750rpx 宽度的标准屏幕对应高度约为 815rpx */
+  height: 815rpx; /* 兜底高度，实际高度由图片原始尺寸动态计算（见 onBannerLoad） */
 }
 .hero-bg {
   width: 100%;
