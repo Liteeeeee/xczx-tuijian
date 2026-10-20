@@ -192,7 +192,7 @@ const userAvatarBg = computed(() => "#BC581C");
 
         <swiper
           class="hero-swiper"
-          :style="{ height: swiperHeight + 'rpx', marginTop: '200rpx' }"
+          :style="{ height: swiperHeight + 'rpx' }"
           :indicator-dots="banners.length > 1"
           :autoplay="banners.length > 1"
           :interval="3000"
@@ -367,10 +367,8 @@ const userAvatarBg = computed(() => "#BC581C");
   width: 100%;
   border-radius: 0;
   overflow: hidden;
-  background: #fdf0de;
 }
 .hero-swiper {
-  margin-top: 200rpx;
   width: 100%;
   height: 815rpx; /* 兜底高度，实际高度由图片原始尺寸动态计算（见 onBannerLoad） */
 }
