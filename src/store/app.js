@@ -1,6 +1,14 @@
 import { defineStore } from 'pinia';
-import { smsLogin, getUserInfo } from '@/utils/api';
+import { smsLogin, getUserInfo, socialUserBind } from '@/utils/api';
 import { setToken, clearToken } from '@/utils/request';
+
+// 社交平台类型：SocialTypeEnum.WECHAT_MINI_PROGRAM
+const SOCIAL_TYPE_WECHAT_MINI_PROGRAM = 34;
+
+// 生成随机 state（后端入参要求非空，微信小程序侧仅作占位）
+function genSocialState() {
+  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+}
 
 const STORAGE_KEY = 'xczx-tuijian-app-state';
 // history 离线缓存 TTL 7 天（无网降级，有网以服务端 /ai/sessions 为准）
@@ -376,7 +384,28 @@ export const useAppStore = defineStore('app', {
         this.user.avatar = user.avatar || '';
       }
       this.persist();
+      // 登录后静默把微信 code 交给后端换 openid 并绑定（仅小程序端，失败不阻断）
+      this.bindWechatOpenid();
       return loginData;
+    },
+    // 微信小程序端：uni.login 取 code -> 后端换 openid 并绑定当前会员
+    async bindWechatOpenid() {
+      // #ifdef MP-WEIXIN
+      try {
+        const loginRes = await new Promise((resolve, reject) => {
+          uni.login({ provider: 'weixin', success: resolve, fail: reject });
+        });
+        const code = loginRes && loginRes.code;
+        if (!code) return;
+        await socialUserBind({
+          type: SOCIAL_TYPE_WECHAT_MINI_PROGRAM,
+          code,
+          state: genSocialState(),
+        });
+      } catch (ignore) {
+        // 绑定失败不影响登录态
+      }
+      // #endif
     },
     logout() {
       clearToken();

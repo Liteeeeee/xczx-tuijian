@@ -1,9 +1,11 @@
 <script setup>
 import { useAppStore } from "@/store/app";
 import { onShow } from "@dcloudio/uni-app";
-import CustomTabBar from "@/components/custom-tab-bar/custom-tab-bar.vue";
+import AppTabBar from "@/components/app-tab-bar/app-tab-bar.vue";
+import { getStatusBarHeight } from "@/utils/status-bar";
 
 const store = useAppStore();
+const statusBarHeight = getStatusBarHeight();
 
 onShow(() => {
   uni.hideTabBar({
@@ -52,7 +54,10 @@ function logout() {
 </script>
 
 <template>
-  <view class="page-shell user-page">
+  <view
+    class="page-shell user-page"
+    :style="{ '--status-bar-height': statusBarHeight + 'px' }"
+  >
     <view class="header-bg">
       <view class="profile-wrap" @tap="!store.loggedIn ? goLogin() : null">
         <image
@@ -92,7 +97,7 @@ function logout() {
       >
     </view>
 
-    <custom-tab-bar :current="2" />
+    <app-tab-bar :current="2" />
   </view>
 </template>
 

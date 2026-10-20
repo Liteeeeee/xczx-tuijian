@@ -65,7 +65,6 @@ async function login() {
     });
     return;
   }
-  debugger;
   try {
     await store.login(form.phone, form.code);
     uni.showToast({
@@ -113,6 +112,11 @@ onUnmounted(() => {
 
 <template>
   <view class="page-shell login-page">
+    <image
+      class="page-bg"
+      src="/static/images/登录_slices/pagebackground.jpg"
+      mode="widthFix"
+    />
     <view class="login-card">
       <view class="login-title">手机号登录</view>
       <view class="login-subtitle">未注册的手机号验证后自动创建账户</view>
@@ -176,15 +180,27 @@ onUnmounted(() => {
 
 <style lang="scss" scoped>
 .login-page {
+  position: relative;
+  z-index: 0;
+  overflow: hidden;
   min-height: 100vh;
-  background: url("/static/images/登录_slices/pagebackground.png") no-repeat top
-    center / cover;
   background-color: #fff8f1;
   display: flex;
   flex-direction: column;
 }
 
+/* 小程序 WXSS 不支持本地 background-image，改用 <image> 铺底 */
+.page-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: -1;
+}
+
 .login-card {
+  position: relative;
+  z-index: 1;
   margin: 180rpx 40rpx 0;
   padding: 60rpx 40rpx;
   border-radius: 40rpx;

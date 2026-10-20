@@ -4,9 +4,11 @@ import { onLoad } from "@dcloudio/uni-app";
 import { useAppStore } from "@/store/app";
 import { useRecommendStore } from "@/store/recommend";
 import { getAiChatLog } from "@/utils/api";
+import { getStatusBarHeight } from "@/utils/status-bar";
 
 const store = useAppStore();
 const recommendStore = useRecommendStore();
+const statusBarHeight = getStatusBarHeight();
 
 const override = ref(null);
 const urlTitle = ref("");
@@ -571,8 +573,8 @@ const productCover = (product, idx) => {
   ].find((x) => typeof x === "string" && x);
   if (c) return c;
   return idx % 2 === 0
-    ? "/static/images/推荐结果 demo/默认商品底图 1.png"
-    : "/static/images/推荐结果 demo/默认商品底图 2.png";
+    ? "/static/images/推荐结果 demo/默认商品底图 1.jpg"
+    : "/static/images/推荐结果 demo/默认商品底图 2.jpg";
 };
 
 function goRecommend() {
@@ -591,7 +593,15 @@ function openProduct(product) {}
 </script>
 
 <template>
-  <view class="page-shell result-page">
+  <view
+    class="page-shell result-page"
+    :style="{ '--status-bar-height': statusBarHeight + 'px' }"
+  >
+    <image
+      class="page-bg"
+      src="/static/images/推荐结果 demo/background.jpg"
+      mode="widthFix"
+    />
     <view class="page-inner">
       <!-- 自定义导航栏 -->
       <view class="custom-nav">
@@ -678,17 +688,24 @@ function openProduct(product) {}
 <style lang="scss" scoped>
 .result-page {
   position: relative;
+  z-index: 0;
   min-height: 100vh;
   overflow: hidden;
   background-color: #fff8f1;
-  background-image: url("/static/images/推荐结果 demo/background.png");
-  background-size: 100% auto;
-  background-position: top center;
-  background-repeat: no-repeat;
+}
+
+/* 小程序 WXSS 不支持本地 background-image，改用 <image> 铺底 */
+.page-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: -1;
 }
 
 .page-inner {
   position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   gap: 28rpx;

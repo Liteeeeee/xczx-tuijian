@@ -1,6 +1,9 @@
 <script setup>
 import { ref, computed, onMounted } from "vue";
 import { getAiSessions } from "@/utils/api";
+import { getStatusBarHeight } from "@/utils/status-bar";
+
+const statusBarHeight = getStatusBarHeight();
 
 const loading = ref(true);
 const list = ref([]);
@@ -90,7 +93,15 @@ function goRecommend() {
 </script>
 
 <template>
-  <view class="page-shell history-page">
+  <view
+    class="page-shell history-page"
+    :style="{ '--status-bar-height': statusBarHeight + 'px' }"
+  >
+    <image
+      class="page-bg"
+      src="/static/images/历史对话_slices/pageBackground.jpg"
+      mode="widthFix"
+    />
     <view class="custom-nav">
       <view class="avatar-block">
         <image
@@ -175,22 +186,31 @@ function goRecommend() {
 
 <style lang="scss" scoped>
 .history-page {
+  position: relative;
+  z-index: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background:
-    url("/static/images/历史对话_slices/pageBackground.png") top center / 100%
-      auto no-repeat,
-    #fff8f1;
+  background-color: #fff8f1;
   padding: 0 32rpx 48rpx;
   box-sizing: border-box;
+}
+
+/* 小程序 WXSS 不支持本地 background-image，改用 <image> 铺底 */
+.page-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: -1;
 }
 
 .custom-nav {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 60rpx 0 28rpx;
+  padding: calc(var(--status-bar-height, 44px) + 60rpx) 0 28rpx;
 }
 .avatar-block {
   display: flex;

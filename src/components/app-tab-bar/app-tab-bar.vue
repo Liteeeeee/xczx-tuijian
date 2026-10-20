@@ -39,7 +39,7 @@ function switchTab(index, path) {
 </script>
 
 <template>
-  <view class="custom-tab-bar">
+  <view class="app-tab-bar">
     <view
       v-for="(item, index) in list"
       :key="index"
@@ -59,7 +59,7 @@ function switchTab(index, path) {
 </template>
 
 <style lang="scss" scoped>
-.custom-tab-bar {
+.app-tab-bar {
   position: fixed;
   bottom: 0;
   left: 0;

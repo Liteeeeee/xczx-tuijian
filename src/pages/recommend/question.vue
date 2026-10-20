@@ -7,9 +7,11 @@ import {
   aiChatAsync,
   aiChatAsyncResult,
 } from "@/utils/api";
+import { getStatusBarHeight } from "@/utils/status-bar";
 
 const store = useAppStore();
 const recommendStore = useRecommendStore();
+const statusBarHeight = getStatusBarHeight();
 
 const loading = ref(true);
 const submitting = ref(false);
@@ -329,7 +331,15 @@ async function submitForm() {
 </script>
 
 <template>
-  <view class="question-page">
+  <view
+    class="question-page"
+    :style="{ '--status-bar-height': statusBarHeight + 'px' }"
+  >
+    <image
+      class="page-bg"
+      src="/static/images/推荐结果 demo/background.jpg"
+      mode="widthFix"
+    />
     <!-- 提交时的 Loading 遮罩层 -->
     <view v-if="submitting" class="loading-overlay">
       <image
@@ -468,10 +478,20 @@ async function submitForm() {
 
 <style lang="scss" scoped>
 .question-page {
+  position: relative;
+  z-index: 0;
+  overflow: hidden;
   min-height: 100vh;
-  background: url("/static/images/推荐结果 demo/background.png") no-repeat top
-    center / cover;
   background-color: #fff8f1;
+}
+
+/* 小程序 WXSS 不支持本地 background-image，改用 <image> 铺底 */
+.page-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: -1;
 }
 
 .loading-overlay {

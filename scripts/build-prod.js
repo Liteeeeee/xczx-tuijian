@@ -72,7 +72,7 @@ if (normalizedBase !== '/' && fs.existsSync(pagesJsonPath)) {
 // and the images folder stays intact (it contains the in-page background/nav images).
 const staticDist = path.join(distDir, 'static');
 if (!fs.existsSync(staticDist)) fs.mkdirSync(staticDist, { recursive: true });
-const srcStatic = path.join(root, 'static');
+const srcStatic = path.join(root, 'src', 'static');
 const tabbarSrcs = [
   'tabbar-home.png',
   'tabbar-home-active.png',

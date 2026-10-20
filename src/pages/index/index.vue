@@ -3,9 +3,11 @@ import { ref, onMounted, computed } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { getComboList, getBannerList } from "@/utils/api";
 import { useAppStore } from "@/store/app";
-import CustomTabBar from "@/components/custom-tab-bar/custom-tab-bar.vue";
+import AppTabBar from "@/components/app-tab-bar/app-tab-bar.vue";
+import { getStatusBarHeight } from "@/utils/status-bar";
 
 const store = useAppStore();
+const statusBarHeight = getStatusBarHeight();
 
 const loading = ref(false);
 const combos = ref([]);
@@ -42,7 +44,7 @@ async function loadBanners() {
       banners.value = [
         {
           id: 1,
-          picUrl: "/static/images/推荐 demo 首页切图/Group 8@2x.png",
+          picUrl: "/static/images/推荐 demo 首页切图/Group 8@2x.jpg",
         },
       ];
       swiperHeight.value = 815;
@@ -51,7 +53,7 @@ async function loadBanners() {
     banners.value = [
       {
         id: 1,
-        picUrl: "/static/images/推荐 demo 首页切图/Group 8@2x.png",
+        picUrl: "/static/images/推荐 demo 首页切图/Group 8@2x.jpg",
       },
     ];
     swiperHeight.value = 815;
@@ -146,13 +148,15 @@ function comboTag(combo) {
 
 function formatPicUrl(url) {
   if (!url) return "";
+  // 本地 /static 包内资源不需要（也不能）做 URL 编码，否则小程序端解析不到文件
+  if (String(url).startsWith("/static/")) return url;
   // 1. 去除 URL 中可能被错误包裹的反引号
   // 2. 将空格转换为 %20
   return url.replace(/`/g, "").replace(/ /g, "%20");
 }
 
 function onBannerError(item) {
-  item.picUrl = "/static/images/推荐 demo 首页切图/Group 8@2x.png";
+  item.picUrl = "/static/images/推荐 demo 首页切图/Group 8@2x.jpg";
 }
 
 const userName = computed(() => {
@@ -166,7 +170,10 @@ const userAvatarBg = computed(() => "#BC581C");
 </script>
 
 <template>
-  <view class="home-page">
+  <view
+    class="home-page"
+    :style="{ '--status-bar-height': statusBarHeight + 'px' }"
+  >
     <view class="hero-wrap">
       <view class="hero-card">
         <view class="custom-nav">
@@ -185,7 +192,7 @@ const userAvatarBg = computed(() => "#BC581C");
 
         <swiper
           class="hero-swiper"
-          :style="{ height: swiperHeight + 'rpx' }"
+          :style="{ height: swiperHeight + 'rpx', marginTop: '200rpx' }"
           :indicator-dots="banners.length > 1"
           :autoplay="banners.length > 1"
           :interval="3000"
@@ -263,7 +270,7 @@ const userAvatarBg = computed(() => "#BC581C");
 
       <view class="footer-copy"> 仙草甄选（北京）科技有限公司技术支持 </view>
     </view>
-    <custom-tab-bar :current="0" />
+    <app-tab-bar :current="0" />
   </view>
 </template>
 
@@ -360,9 +367,10 @@ const userAvatarBg = computed(() => "#BC581C");
   width: 100%;
   border-radius: 0;
   overflow: hidden;
-  background: transparent;
+  background: #fdf0de;
 }
 .hero-swiper {
+  margin-top: 200rpx;
   width: 100%;
   height: 815rpx; /* 兜底高度，实际高度由图片原始尺寸动态计算（见 onBannerLoad） */
 }

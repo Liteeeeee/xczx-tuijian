@@ -30,6 +30,19 @@ export function getUserInfo() {
   });
 }
 
+// 微信小程序：社交绑定
+// data: { type, code, state }
+//   type  —— 社交平台类型，34 = WECHAT_MINI_PROGRAM（SocialTypeEnum）
+//   code  —— uni.login 拿到的登录凭证，后端据此调 jscode2session 换 openid
+//   前端不接触 openid，仅负责把 code 交给后端
+export function socialUserBind(data) {
+  return request({
+    url: '/app/member/social-user/bind',
+    method: 'POST',
+    data,
+  });
+}
+
 // 商品推荐组合分页
 // params: { pageNum, pageSize }
 export function getComboList(params) {

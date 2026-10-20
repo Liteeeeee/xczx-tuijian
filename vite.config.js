@@ -5,11 +5,15 @@ import path from 'node:path';
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const basePath = (env.VITE_BASE_PATH || '/').replace(/\/+$/, '/');
-  const apiBaseUrl = env.VITE_API_BASE_URL || '';
+  // 小程序端没有 Vite 代理，必须使用可直连的绝对域名；
+  // H5 端保持为空，走 devServer / nginx 同域转发。
+  const isMpWeixin = process.env.UNI_PLATFORM === 'mp-weixin';
+  const apiBaseUrl = isMpWeixin
+    ? env.VITE_MP_API_BASE_URL || env.VITE_API_BASE_URL || 'https://aitj-api.xiancaozhenxuan.cn'
+    : env.VITE_API_BASE_URL || '';
 
   return {
     base: basePath,
-    publicDir: 'static',
     plugins: [uni()],
     resolve: {
       alias: {

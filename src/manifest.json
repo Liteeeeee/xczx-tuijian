@@ -4,6 +4,7 @@
   "description": "仙草甄选 AI 营养推荐 H5 / 小程序项目",
   "versionName": "0.1.0",
   "versionCode": "100",
+  "vueVersion": "3",
   "transformPx": false,
   "h5": {
     "title": "仙草甄选 AI 推荐",
@@ -12,9 +13,16 @@
     }
   },
   "mp-weixin": {
-    "appid": "",
+    "appid": "wx73fed58cb57a7256",
     "setting": {
-      "urlCheck": false
+      "urlCheck": false,
+      "es6": true,
+      "postcss": true,
+      "minified": true
+    },
+    "usingComponents": true,
+    "optimization": {
+      "subPackages": true
     }
   }
 }

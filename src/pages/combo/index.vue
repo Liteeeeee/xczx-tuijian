@@ -3,9 +3,11 @@ import { ref, computed, onMounted } from "vue";
 import { onReachBottom, onShow } from "@dcloudio/uni-app";
 import { getComboList } from "@/utils/api";
 import { useAppStore } from "@/store/app";
-import CustomTabBar from "@/components/custom-tab-bar/custom-tab-bar.vue";
+import AppTabBar from "@/components/app-tab-bar/app-tab-bar.vue";
+import { getStatusBarHeight } from "@/utils/status-bar";
 
 const store = useAppStore();
+const statusBarHeight = getStatusBarHeight();
 
 const loading = ref(true);
 
@@ -154,7 +156,10 @@ function comboProducts(combo) {
 </script>
 
 <template>
-  <view class="page-shell combo-page">
+  <view
+    class="page-shell combo-page"
+    :style="{ '--status-bar-height': statusBarHeight + 'px' }"
+  >
     <view class="hero-wrap">
       <view class="banner-card">
         <view class="custom-nav">
@@ -173,7 +178,7 @@ function comboProducts(combo) {
 
         <image
           class="banner-img"
-          src="/static/images/营养推荐/banner@3x.png"
+          src="/static/images/营养推荐/banner@3x.jpg"
           mode="widthFix"
         />
       </view>
@@ -252,7 +257,7 @@ function comboProducts(combo) {
     </view>
 
     <view class="footer-copy">仙草甄选（北京）科技有限公司技术支持</view>
-    <custom-tab-bar :current="1" />
+    <app-tab-bar :current="1" />
   </view>
 </template>
 
