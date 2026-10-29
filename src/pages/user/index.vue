@@ -20,10 +20,22 @@ const menus = [
     icon: "/static/images/个人中心/历史对话.png",
   },
   {
+    title: "隐私政策",
+    url: "/pages/user/agreement?type=privacy",
+    icon: "/static/images/个人中心/关于我们.png",
+  },
+  {
     title: "关于我们",
     url: "/pages/user/about",
     icon: "/static/images/个人中心/关于我们.png",
   },
+];
+
+// 未登录也可查看的页面（协议类内容需在审核时随时可访问）
+const publicUrls = [
+  "/pages/user/about",
+  "/pages/user/agreement?type=privacy",
+  "/pages/user/agreement?type=service",
 ];
 
 function goLogin() {
@@ -33,7 +45,7 @@ function goLogin() {
 }
 
 function goPage(url) {
-  if (!store.loggedIn && url !== "/pages/user/about") {
+  if (!store.loggedIn && !publicUrls.includes(url)) {
     goLogin();
     return;
   }

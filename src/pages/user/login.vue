@@ -102,6 +102,12 @@ async function login() {
   }
 }
 
+function openAgreement(type) {
+  uni.navigateTo({
+    url: `/pages/user/agreement?type=${type}`,
+  });
+}
+
 onUnmounted(() => {
   if (timer) {
     clearInterval(timer);
@@ -171,8 +177,14 @@ onUnmounted(() => {
       <view class="primary-btn login-btn" @tap="login">登录</view>
 
       <view class="agreement-hint">
-        <text class="hint-text">登录即代表您同意我们的</text>
-        <text class="link-text">《用户服务协议》</text>
+        <text class="hint-text">登录即代表您同意</text>
+        <text class="link-text" @tap="openAgreement('service')"
+          >《用户服务协议》</text
+        >
+        <text class="hint-text">与</text>
+        <text class="link-text" @tap="openAgreement('privacy')"
+          >《隐私政策》</text
+        >
       </view>
     </view>
   </view>
@@ -305,6 +317,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-wrap: wrap;
 }
 
 .hint-text {

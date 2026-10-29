@@ -57,7 +57,7 @@
     {
       "path": "pages/user/agreement",
       "style": {
-        "navigationBarTitleText": "服务协议"
+        "navigationBarTitleText": "用户服务协议"
       }
     },
     {
