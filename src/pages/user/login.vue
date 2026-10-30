@@ -2,8 +2,10 @@
 import { reactive, ref, onUnmounted } from "vue";
 import { useAppStore } from "@/store/app";
 import { sendSmsCode } from "@/utils/api";
+import { getStatusBarHeight } from "@/utils/status-bar";
 
 const store = useAppStore();
+const statusBarHeight = getStatusBarHeight();
 
 const form = reactive({
   phone: store.user.phone,
@@ -12,6 +14,8 @@ const form = reactive({
 
 const sending = ref(false);
 const countdown = ref(0);
+// 协议同意状态：默认不勾选，必须由用户主动勾选后才能登录
+const agreed = ref(false);
 let timer = null;
 
 function validatePhone() {
@@ -56,6 +60,15 @@ function startCountdown() {
 }
 
 async function login() {
+  // 必须由用户主动勾选同意协议，不允许默认同意
+  if (!agreed.value) {
+    uni.showToast({
+      title: "请先阅读并勾选同意协议",
+      icon: "none",
+    });
+    return;
+  }
+
   if (!validatePhone()) return;
 
   if (!form.code || form.code.length < 4) {
@@ -108,6 +121,19 @@ function openAgreement(type) {
   });
 }
 
+// 提供明确的取消/返回入口，避免用户被迫停留在登录页
+function goBack() {
+  if (getCurrentPages().length > 1) {
+    uni.navigateBack();
+    return;
+  }
+  uni.switchTab({ url: "/pages/index/index" });
+}
+
+function toggleAgree() {
+  agreed.value = !agreed.value;
+}
+
 onUnmounted(() => {
   if (timer) {
     clearInterval(timer);
@@ -117,12 +143,19 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <view class="page-shell login-page">
+  <view
+    class="page-shell login-page"
+    :style="{ '--status-bar-height': statusBarHeight + 'px' }"
+  >
     <image
       class="page-bg"
       src="/static/images/登录_slices/pagebackground.jpg"
       mode="widthFix"
     />
+    <!-- 自定义导航栏下必须提供返回/取消入口 -->
+    <view class="nav-back" @tap="goBack">
+      <text class="nav-back-icon">‹</text>
+    </view>
     <view class="login-card">
       <view class="login-title">手机号登录</view>
       <view class="login-subtitle">未注册的手机号验证后自动创建账户</view>
@@ -174,18 +207,28 @@ onUnmounted(() => {
         </view>
       </view>
 
-      <view class="primary-btn login-btn" @tap="login">登录</view>
-
-      <view class="agreement-hint">
-        <text class="hint-text">登录即代表您同意</text>
-        <text class="link-text" @tap="openAgreement('service')"
-          >《用户服务协议》</text
+      <!-- 协议需用户主动勾选，不默认同意 -->
+      <view class="agree-row">
+        <view
+          class="agree-box"
+          :class="{ checked: agreed }"
+          @tap="toggleAgree"
         >
-        <text class="hint-text">与</text>
-        <text class="link-text" @tap="openAgreement('privacy')"
-          >《隐私政策》</text
-        >
+          <text v-if="agreed" class="agree-tick">✓</text>
+        </view>
+        <view class="agree-text" @tap="toggleAgree">
+          我已阅读并同意
+          <text class="link-text" @tap.stop="openAgreement('service')"
+            >《用户服务协议》</text
+          >
+          与
+          <text class="link-text" @tap.stop="openAgreement('privacy')"
+            >《隐私政策》</text
+          >
+        </view>
       </view>
+
+      <view class="primary-btn login-btn" @tap="login">登录</view>
     </view>
   </view>
 </template>
@@ -208,6 +251,28 @@ onUnmounted(() => {
   left: 0;
   width: 100%;
   z-index: -1;
+}
+
+.nav-back {
+  position: absolute;
+  left: 24rpx;
+  top: calc(var(--status-bar-height, 20px) + 12rpx);
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4rpx 16rpx rgba(188, 88, 28, 0.12);
+  z-index: 10;
+}
+
+.nav-back-icon {
+  font-size: 44rpx;
+  line-height: 1;
+  color: #1d2129;
+  margin-top: -8rpx;
 }
 
 .login-card {
@@ -310,17 +375,41 @@ onUnmounted(() => {
   box-shadow: 0 8rpx 24rpx rgba(188, 88, 28, 0.28);
 }
 
-.agreement-hint {
-  margin-top: 40rpx;
-  text-align: center;
-  font-size: 24rpx;
+.agree-row {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 32rpx;
+}
+
+.agree-box {
+  width: 32rpx;
+  height: 32rpx;
+  flex-shrink: 0;
+  margin: 4rpx 12rpx 0 0;
+  border: 2rpx solid #c9cdd4;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-wrap: wrap;
+  transition: all 0.15s;
 }
 
-.hint-text {
+.agree-box.checked {
+  background: #bc581c;
+  border-color: #bc581c;
+}
+
+.agree-tick {
+  font-size: 20rpx;
+  line-height: 1;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.agree-text {
+  flex: 1;
+  font-size: 24rpx;
+  line-height: 1.5;
   color: #86909c;
 }
 
